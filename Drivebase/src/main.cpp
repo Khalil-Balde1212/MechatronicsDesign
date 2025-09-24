@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#define MOTOR_FLA 27
-#define MOTOR_FLB 14
+#define MOTOR_FLA 14
+#define MOTOR_FLB 27
 #define MOTOR_FRA 32
 #define MOTOR_FRB 33
 #define MOTOR_BLA 25
@@ -16,18 +16,8 @@ void setup() {
 }
 
 void loop() {
-  setSpeeds(1, 1);
-  delay(1000);
-  setSpeeds(-1, -1);
-  delay(1000);
-  setSpeeds(0, 0);
-  delay(1000);
-  setSpeeds(1, -1);
-  delay(1000);
   setSpeeds(-1, 1);
-  delay(1000);
-  setSpeeds(0, 0);
-  delay(2000);
+  delay(100);
 }
 
 /**
