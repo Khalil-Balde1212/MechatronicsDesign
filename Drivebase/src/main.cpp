@@ -194,15 +194,14 @@ void loop() {
       break;
 
       case 'x': {
-        if (command == "reset") {
-          noInterrupts();
-          encoderCountFL = 0;
-          encoderCountFR = 0;
-          encoderCountBL = 0;
-          encoderCountBR = 0;
-          interrupts();
-          Serial.println("FL position reset");
-        }
+        encoderCountFL = 0;
+        encoderCountFR = 0;
+        encoderCountBL = 0;
+        encoderCountBR = 0;
+        setpoint_fl = 0;
+        setpoint_fr = 0;
+        setpoint_bl = 0;
+        setpoint_br = 0;
         break;
       }
       
@@ -247,8 +246,8 @@ void loop() {
  */
 void setMotorSpeed(int motorPin1, int motorPin2, int speed) {
   speed = constrain(speed, -4095, 4095);
-  if (speed != 0 && abs(speed) < 1000) {
-    speed = (speed > 0) ? 1000 : -1000;
+  if (speed != 0 && abs(speed) < 1500) {
+    speed = (speed > 0) ? 1500 : -1500;
   }
 
   if (speed > 0) {
