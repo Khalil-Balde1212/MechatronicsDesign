@@ -3,8 +3,30 @@
 #include "MotorController.h"
 #include "Encoders.h"
 
-// Create motor controller instance
 MotorController motorController;
+void processSerialCommand(String command);
+
+void setup() {
+  Serial.begin(9600);
+  motorController.begin();
+}
+
+void loop() {
+  motorController.updateAllPID();
+  
+  // Check for serial commands
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    processSerialCommand(command);
+  }
+  
+  // Print status every 500ms
+  static unsigned long last_print = 0;
+  if (millis() - last_print > 500) {
+    Encoders::printRotations();
+    last_print = millis();
+  }
+}
 
 // Function to process serial commands
 void processSerialCommand(String command) {
@@ -160,31 +182,4 @@ void processSerialCommand(String command) {
     } else {
         Serial.println("Unknown command");
     }
-}
-
-void setup() {
-  Serial.begin(9600);
-  
-  // Initialize motor controller
-  motorController.begin();
-  
-  delay(1000);
-}
-
-void loop() {
-  // Update all PID controllers
-  motorController.updateAllPID();
-  
-  // Check for serial commands
-  if (Serial.available()) {
-    String command = Serial.readStringUntil('\n');
-    processSerialCommand(command);
-  }
-  
-  // Print status every 500ms
-  static unsigned long last_print = 0;
-  if (millis() - last_print > 500) {
-    Encoders::printRotations();
-    last_print = millis();
-  }
 }
