@@ -29,9 +29,9 @@ float ki = 0.0;
 float kd = 0.0;
 
 // PID variables for front left motor
-long setpoint_fl = 0;
-float integral_fl = 0;
-float prev_error_fl = 0;
+long setpoint_fl, setpoint_fr, setpoint_bl, setpoint_br = 0;
+float integral_fl, integral_fr, integral_bl, integral_br = 0;
+float prev_error_fl, prev_error_fr, prev_error_bl, prev_error_br = 0;
 unsigned long last_time = 0;
 
 // Encoder variables
@@ -52,8 +52,18 @@ void resetEncoders();
 void printEncoderCounts();
 void printRotations();
 float pidControlFL();
+float pidControlFR();
+float pidControlBL();
+float pidControlBR();
 void setPositionFL(float rotations);
+void setPositionFR(float rotations);
+void setPositionBL(float rotations);
+void setPositionBR(float rotations);
 void setPositionDegreesFL(float degrees);
+void setPositionDegreesFR(float degrees);
+void setPositionDegreesBL(float degrees);
+void setPositionDegreesBR(float degrees);
+
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 void setup() {
@@ -102,42 +112,91 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim();
     
-    if (command.startsWith("r")) {
-      // Rotation command: r1.5 = 1.5 rotations
-      float rotations = command.substring(1).toFloat();
-      setPositionFL(rotations);
-      Serial.print("Setting FL motor to ");
-      Serial.print(rotations);
-      Serial.println(" rotations");
-        }
-        else if (command.startsWith("kp")) {
-      kp = command.substring(2).toFloat();
-      Serial.print("Updated kp to: ");
-      Serial.println(kp);
-        }
-        else if (command.startsWith("ki")) {
-      ki = command.substring(2).toFloat();
-      Serial.print("Updated ki to: ");
-      Serial.println(ki);
-        }
-        else if (command.startsWith("kd")) {
-      kd = command.substring(2).toFloat();
-      Serial.print("Updated kd to: ");
-      Serial.println(kd);
-        }
-        else if (command == "reset") {
-      noInterrupts();
-      encoderCountFL = 0;
-      interrupts();
-      setPositionFL(0);
-      Serial.println("FL position reset");
-    }
-    else if (command == "status") {
-      Serial.print("FL Current: ");
-      Serial.print(encoderCountFL / (float)cpr, 2);
-      Serial.print(" rotations, Setpoint: ");
-      Serial.print(setpoint_fl / (float)cpr, 2);
-      Serial.println(" rotations");
+    switch (command[0]) {
+      // rotate command rX####
+      // X = side: r=right, l=left, a=front right, b=back right, c=front left, d=back left,
+      // #### = number of rotations (float)
+      case 'r':
+      char side = command[1];
+      float rotations = command.substring(2).toFloat();
+
+      switch(side){
+        case 'r':
+        setPositionFR(rotations);
+        setPositionBR(rotations);
+        break;
+
+        case 'l':
+        setPositionFL(rotations);
+        setPositionBL(rotations);
+        break;
+
+        case 'a':
+        setPositionFR(rotations);
+        break;
+
+        case 'b':
+        setPositionBR(rotations);
+        break;
+
+        case 'c':
+        setPositionFL(rotations);
+        break;
+
+        case 'd':
+        setPositionBL(rotations);
+        break;
+      }
+      break;
+      
+      // set pid gains command kX####
+      // X = gain type: p=kp, i=ki, d=kd
+      // #### = new gain value (float)
+      case 'k':
+      if (command.startsWith("kp")) {
+        kp = command.substring(2).toFloat();
+        Serial.print("Updated kp to: ");
+        Serial.println(kp);
+      } else if (command.startsWith("ki")) {
+        ki = command.substring(2).toFloat();
+        Serial.print("Updated ki to: ");
+        Serial.println(ki);
+      } else if (command.startsWith("kd")) {
+        kd = command.substring(2).toFloat();
+        Serial.print("Updated kd to: ");
+        Serial.println(kd);
+      }
+      break;
+
+      case 'x': 
+      if (command == "reset") {
+        noInterrupts();
+        encoderCountFL = 0;
+        interrupts();
+        setPositionFL(0);
+        Serial.println("FL position reset");
+      }
+      break;
+      
+      case 's': 
+      if (command == "status") {
+        Serial.print("FL Current: ");
+        Serial.print(encoderCountFL / (float)cpr, 2);
+        Serial.print(" rotations, Setpoint: ");
+        Serial.print(setpoint_fl / (float)cpr, 2);
+        Serial.println(" rotations");
+      }
+      break;
+
+      case 'h':
+      default:
+      Serial.println("Unknown command. Available commands:");
+      Serial.println("- rX####: Rotate motors (X: side, ####: rotations)");
+      Serial.println("  Sides: r=right, l=left, a=front right, b=back right, c=front left, d=back left");
+      Serial.println("- kX####: Set PID gains (X: p=kp, i=ki, d=kd, ####: value)");
+      Serial.println("- reset: Reset FL position");
+      Serial.println("- status: Display FL current position and setpoint");
+      break;
     }
   }
   
@@ -301,6 +360,78 @@ float pidControlFL() {
   return output;
 }
 
+float pidControlFR() {
+  noInterrupts();
+  unsigned long now = millis();
+  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float error = setpoint_fr - encoderCountFR;
+  interrupts();
+  // Proportional term
+  float P = kp * error;
+  
+  // Integral term
+  integral_fr += error * dt;
+  float I = ki * integral_fr;
+  
+  // Derivative term
+  float D = kd * (error - prev_error_fr) / dt;
+  prev_error_fr = error;
+  
+  // Combine PID terms
+  float output = P + I + D;
+
+  last_time = now;
+  return output;
+}
+
+float pidControlBL() {
+  noInterrupts();
+  unsigned long now = millis();
+  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float error = setpoint_bl - encoderCountBL;
+  interrupts();
+  // Proportional term
+  float P = kp * error;
+  
+  // Integral term
+  integral_bl += error * dt;
+  float I = ki * integral_bl;
+  
+  // Derivative term
+  float D = kd * (error - prev_error_bl) / dt;
+  prev_error_bl = error;
+  
+  // Combine PID terms
+  float output = P + I + D;
+
+  last_time = now;
+  return output;
+}
+
+float pidControlBR() {
+  noInterrupts();
+  unsigned long now = millis();
+  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float error = setpoint_br - encoderCountBR;
+  interrupts();
+  // Proportional term
+  float P = kp * error;
+  
+  // Integral term
+  integral_br += error * dt;
+  float I = ki * integral_br;
+  
+  // Derivative term
+  float D = kd * (error - prev_error_br) / dt;
+  prev_error_br = error;
+  
+  // Combine PID terms
+  float output = P + I + D;
+
+  last_time = now;
+  return output;
+}
+
 // Set position in rotations for front left motor
 void setPositionFL(float rotations) {
   setpoint_fl = (long)(rotations * cpr);
@@ -318,4 +449,61 @@ void setPositionFL(float rotations) {
 void setPositionDegreesFL(float degrees) {
   float rotations = degrees / 360.0;
   setPositionFL(rotations);
+}
+
+// Set position in rotations for front right motor
+void setPositionFR(float rotations) {
+  setpoint_fr = (long)(rotations * cpr);
+  
+  // Reset integral term to avoid windup
+  integral_fr = 0;
+  prev_error_fr = 0;
+  
+  Serial.print("FR setpoint set to: ");
+  Serial.print(rotations, 2);
+  Serial.println(" rotations");
+}
+
+// Set position in degrees for front right motor
+void setPositionDegreesFR(float degrees) {
+  float rotations = degrees / 360.0;
+  setPositionFR(rotations);
+}
+
+// Set position in rotations for back left motor
+void setPositionBL(float rotations) {
+  setpoint_bl = (long)(rotations * cpr);
+  
+  // Reset integral term to avoid windup
+  integral_bl = 0;
+  prev_error_bl = 0;
+  
+  Serial.print("BL setpoint set to: ");
+  Serial.print(rotations, 2);
+  Serial.println(" rotations");
+}
+
+// Set position in degrees for back left motor
+void setPositionDegreesBL(float degrees) {
+  float rotations = degrees / 360.0;
+  setPositionBL(rotations);
+}
+
+// Set position in rotations for back right motor
+void setPositionBR(float rotations) {
+  setpoint_br = (long)(rotations * cpr);
+  
+  // Reset integral term to avoid windup
+  integral_br = 0;
+  prev_error_br = 0;
+  
+  Serial.print("BR setpoint set to: ");
+  Serial.print(rotations, 2);
+  Serial.println(" rotations");
+}
+
+// Set position in degrees for back right motor
+void setPositionDegreesBR(float degrees) {
+  float rotations = degrees / 360.0;
+  setPositionBR(rotations);
 }
