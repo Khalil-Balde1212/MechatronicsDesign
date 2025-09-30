@@ -64,20 +64,20 @@ void processSerialCommand(String command) {
                     break;
                 }
                 case 'f': {
-                    motorController.setPositionFL(value);
-                    motorController.setPositionFR(value);
-                    motorController.setPositionBL(value);
-                    motorController.setPositionBR(value);
+                    motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
+                    motorController.setPositionFR(motorController.getSetpointRotationsFR() + value);
+                    motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
+                    motorController.setPositionBR(motorController.getSetpointRotationsBR() + value);
                     Serial.print("All motors set to ");
                     Serial.print(value);
                     Serial.println(" rotations (forward)");
                     break;
                 }
                 case 't': {
-                    motorController.setPositionFL(value);
-                    motorController.setPositionBL(value);
-                    motorController.setPositionFR(-value);
-                    motorController.setPositionBR(-value);
+                    motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
+                    motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
+                    motorController.setPositionFR(motorController.getSetpointRotationsFR() - value);
+                    motorController.setPositionBR(motorController.getSetpointRotationsBR() - value);
                     Serial.print("Turn command: Left side ");
                     Serial.print(value);
                     Serial.print(" rotations, Right side ");
