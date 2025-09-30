@@ -2,29 +2,29 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
-#define MOTOR_FLA 7
-#define MOTOR_FLB 6
-#define MOTOR_FRA 4
-#define MOTOR_FRB 5
-#define MOTOR_BLA 8
-#define MOTOR_BLB 9
-#define MOTOR_BRA 10
-#define MOTOR_BRB 11
+#define MOTOR_FLA 14
+#define MOTOR_FLB 15
+#define MOTOR_FRA 5
+#define MOTOR_FRB 4
+#define MOTOR_BLA 13
+#define MOTOR_BLB 12
+#define MOTOR_BRA 7
+#define MOTOR_BRB 6
 
-//2, 3, 9, 10, 11
-#define ENC_FLA 10
-#define ENC_FLB 9
+//2, 3, 9, 10, 11 ISRs
+#define ENC_FLA 3
+#define ENC_FLB 4
 #define ENC_FRA 11
 #define ENC_FRB 8
-#define ENC_BLA 2
-#define ENC_BLB 5
-#define ENC_BRA 3
-#define ENC_BRB 4 
+#define ENC_BLA 10
+#define ENC_BLB 9
+#define ENC_BRA 2
+#define ENC_BRB 7 
 
 int cpr = 1440; // Counts per revolution
 
 // PID constants for front left motor only
-float kp = 10.0;
+float kp = 15.0;
 float ki = 0.0;
 float kd = 0.0;
 
@@ -32,7 +32,7 @@ float kd = 0.0;
 long setpoint_fl, setpoint_fr, setpoint_bl, setpoint_br = 0;
 float integral_fl, integral_fr, integral_bl, integral_br = 0;
 float prev_error_fl, prev_error_fr, prev_error_bl, prev_error_br = 0;
-unsigned long last_time = 0;
+unsigned long last_time_fl, last_time_fr, last_time_bl, last_time_br = 0;
 
 // Encoder variables
 volatile long encoderCountFL = 0;
@@ -69,7 +69,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 void setup() {
   Serial.begin(9600);
   pwm.begin();
-  pwm.setPWMFreq(1600);  // This is the maximum PWM frequency
+  pwm.setPWMFreq(800);  // This is the maximum PWM frequency
   
   // Initialize encoder pins as inputs with pull-up resistors
   pinMode(ENC_FLA, INPUT_PULLUP);
@@ -92,20 +92,30 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_BLA), encoderISR_BL, RISING);
   attachInterrupt(digitalPinToInterrupt(ENC_BRA), encoderISR_BR, RISING);
 
-  setSpeeds(0,0);
-  last_time = millis();
+  setSpeeds(0, 0);
+  last_time_fl = last_time_fr = last_time_bl = last_time_br = millis();
   
   Serial.println("Front Left PID Position Control Initialized");
   Serial.println("Commands:");
   Serial.println("- Send 'r1.5' to rotate FL motor 1.5 rotations");
   Serial.println("- Send 'd90' to rotate FL motor 90 degrees");
   Serial.println("- Send 'reset' to reset FL position");
+  delay(1000);
 }
 
 void loop() {
   // Update PID control for front left motor
-  float pidOutput = pidControlFL();
-  setMotorSpeed(MOTOR_FLA, MOTOR_FLB, (int)pidOutput);
+  float pidOutputFL = pidControlFL();
+  setMotorSpeed(MOTOR_FLA, MOTOR_FLB, (int)pidOutputFL);
+
+  float pidOutputFR = pidControlFR();
+  setMotorSpeed(MOTOR_FRA, MOTOR_FRB, (int)pidOutputFR);
+
+  float pidOutputBL = pidControlBL();
+  setMotorSpeed(MOTOR_BLA, MOTOR_BLB, (int)pidOutputBL);
+
+  float pidOutputBR = pidControlBR();
+  setMotorSpeed(MOTOR_BRA, MOTOR_BRB, (int)pidOutputBR);
   
   // Check for serial commands
   if (Serial.available()) {
@@ -116,87 +126,106 @@ void loop() {
       // rotate command rX####
       // X = side: r=right, l=left, a=front right, b=back right, c=front left, d=back left,
       // #### = number of rotations (float)
-      case 'r':
-      char side = command[1];
-      float rotations = command.substring(2).toFloat();
+      case 'r': {
+        char side = command[1];
+        float rotations = command.substring(2).toFloat();
 
-      switch(side){
-        case 'r':
-        setPositionFR(rotations);
-        setPositionBR(rotations);
-        break;
+        switch(side){
+          case 'r':
+            setPositionFR(rotations);
+            setPositionBR(rotations);
+            break;
 
-        case 'l':
-        setPositionFL(rotations);
-        setPositionBL(rotations);
-        break;
+          case 'l':
+            setPositionFL(rotations);
+            setPositionBL(rotations);
+            break;
 
-        case 'a':
-        setPositionFR(rotations);
-        break;
+          case 'a':
+            setPositionFR(rotations);
+            break;
 
-        case 'b':
-        setPositionBR(rotations);
-        break;
+          case 'b':
+            setPositionBR(rotations);
+            break;
 
-        case 'c':
-        setPositionFL(rotations);
-        break;
+          case 'c':
+            setPositionFL(rotations);
+            break;
 
-        case 'd':
-        setPositionBL(rotations);
+          case 'd':
+            setPositionBL(rotations);
+            break;
+
+          case 'f':
+            setPositionFR((encoderCountFR / (float)cpr) + rotations);
+            setPositionFL((encoderCountFL / (float)cpr) + rotations);
+            setPositionBR((encoderCountBR / (float)cpr) + rotations);
+            setPositionBL((encoderCountBL / (float)cpr) + rotations);
+            break;
+          case 't':
+            setPositionFR((encoderCountFR / (float)cpr) + rotations);
+            setPositionFL((encoderCountFL / (float)cpr) - rotations);
+            setPositionBR((encoderCountBR / (float)cpr) + rotations);
+            setPositionBL((encoderCountBL / (float)cpr) - rotations);
+            break;
+        }
         break;
       }
-      break;
       
       // set pid gains command kX####
       // X = gain type: p=kp, i=ki, d=kd
       // #### = new gain value (float)
-      case 'k':
-      if (command.startsWith("kp")) {
-        kp = command.substring(2).toFloat();
-        Serial.print("Updated kp to: ");
-        Serial.println(kp);
-      } else if (command.startsWith("ki")) {
-        ki = command.substring(2).toFloat();
-        Serial.print("Updated ki to: ");
-        Serial.println(ki);
-      } else if (command.startsWith("kd")) {
-        kd = command.substring(2).toFloat();
-        Serial.print("Updated kd to: ");
-        Serial.println(kd);
+      case 'k': {
+        if (command.startsWith("kp")) {
+          kp = command.substring(2).toFloat();
+          Serial.print("Updated kp to: ");
+          Serial.println(kp);
+        } else if (command.startsWith("ki")) {
+          ki = command.substring(2).toFloat();
+          Serial.print("Updated ki to: ");
+          Serial.println(ki);
+        } else if (command.startsWith("kd")) {
+          kd = command.substring(2).toFloat();
+          Serial.print("Updated kd to: ");
+          Serial.println(kd);
+        }
       }
       break;
 
-      case 'x': 
-      if (command == "reset") {
-        noInterrupts();
-        encoderCountFL = 0;
-        interrupts();
-        setPositionFL(0);
-        Serial.println("FL position reset");
+      case 'x': {
+        if (command == "reset") {
+          noInterrupts();
+          encoderCountFL = 0;
+          encoderCountFR = 0;
+          encoderCountBL = 0;
+          encoderCountBR = 0;
+          interrupts();
+          Serial.println("FL position reset");
+        }
+        break;
       }
-      break;
       
-      case 's': 
-      if (command == "status") {
-        Serial.print("FL Current: ");
-        Serial.print(encoderCountFL / (float)cpr, 2);
-        Serial.print(" rotations, Setpoint: ");
-        Serial.print(setpoint_fl / (float)cpr, 2);
-        Serial.println(" rotations");
+      case 's': {
+        if (command == "status") {
+          Serial.print("FL Current: ");
+          Serial.print(encoderCountFL / (float)cpr, 2);
+          Serial.print(" rotations, Setpoint: ");
+          Serial.print(setpoint_fl / (float)cpr, 2);
+          Serial.println(" rotations");
+        }
+        break;
       }
-      break;
 
-      case 'h':
-      default:
-      Serial.println("Unknown command. Available commands:");
-      Serial.println("- rX####: Rotate motors (X: side, ####: rotations)");
-      Serial.println("  Sides: r=right, l=left, a=front right, b=back right, c=front left, d=back left");
-      Serial.println("- kX####: Set PID gains (X: p=kp, i=ki, d=kd, ####: value)");
-      Serial.println("- reset: Reset FL position");
-      Serial.println("- status: Display FL current position and setpoint");
-      break;
+      default: {
+        Serial.println("Unknown command. Available commands:");
+        Serial.println("- rX####: Rotate motors (X: side, ####: rotations)");
+        Serial.println("  Sides: r=right, l=left, a=front right, b=back right, c=front left, d=back left");
+        Serial.println("- kX####: Set PID gains (X: p=kp, i=ki, d=kd, ####: value)");
+        Serial.println("- reset: Reset FL position");
+        Serial.println("- status: Display FL current position and setpoint");
+        break;
+      }
     }
   }
   
@@ -218,6 +247,9 @@ void loop() {
  */
 void setMotorSpeed(int motorPin1, int motorPin2, int speed) {
   speed = constrain(speed, -4095, 4095);
+  if (speed != 0 && abs(speed) < 1000) {
+    speed = (speed > 0) ? 1000 : -1000;
+  }
 
   if (speed > 0) {
     pwm.setPWM(motorPin1, 0, speed);
@@ -248,9 +280,9 @@ void encoderISR_FL() {
   
   // Determine direction based on A and B states
   if (stateA == stateB) {
-    encoderCountFL++;  // Forward direction
+    encoderCountFL--;  // Forward direction
   } else {
-    encoderCountFL--;  // Reverse direction
+    encoderCountFL++;  // Reverse direction
   }
 }
 
@@ -270,9 +302,9 @@ void encoderISR_BL() {
   bool stateB = digitalRead(ENC_BLB);
   
   if (stateA == stateB) {
-    encoderCountBL++;
-  } else {
     encoderCountBL--;
+  } else {
+    encoderCountBL++;
   }
 }
 
@@ -339,7 +371,7 @@ void printRotations() {
 float pidControlFL() {
   noInterrupts();
   unsigned long now = millis();
-  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float dt = (now - last_time_fl) / 1000.0; // Convert to seconds
   float error = setpoint_fl - encoderCountFL;
   interrupts();
   // Proportional term
@@ -356,14 +388,14 @@ float pidControlFL() {
   // Combine PID terms
   float output = P + I + D;
 
-  last_time = now;
+  last_time_fl = now;
   return output;
 }
 
 float pidControlFR() {
   noInterrupts();
   unsigned long now = millis();
-  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float dt = (now - last_time_fr) / 1000.0; // Convert to seconds
   float error = setpoint_fr - encoderCountFR;
   interrupts();
   // Proportional term
@@ -380,14 +412,14 @@ float pidControlFR() {
   // Combine PID terms
   float output = P + I + D;
 
-  last_time = now;
+  last_time_fr = now;
   return output;
 }
 
 float pidControlBL() {
   noInterrupts();
   unsigned long now = millis();
-  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float dt = (now - last_time_bl) / 1000.0; // Convert to seconds
   float error = setpoint_bl - encoderCountBL;
   interrupts();
   // Proportional term
@@ -404,14 +436,14 @@ float pidControlBL() {
   // Combine PID terms
   float output = P + I + D;
 
-  last_time = now;
+  last_time_bl = now;
   return output;
 }
 
 float pidControlBR() {
   noInterrupts();
   unsigned long now = millis();
-  float dt = (now - last_time) / 1000.0; // Convert to seconds
+  float dt = (now - last_time_br) / 1000.0; // Convert to seconds
   float error = setpoint_br - encoderCountBR;
   interrupts();
   // Proportional term
@@ -428,7 +460,7 @@ float pidControlBR() {
   // Combine PID terms
   float output = P + I + D;
 
-  last_time = now;
+  last_time_br = now;
   return output;
 }
 
