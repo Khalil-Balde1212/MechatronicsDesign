@@ -24,9 +24,9 @@
 int cpr = 1440; // Counts per revolution
 
 // PID constants for front left motor only
-float kp = 15.0;
+float kp = 25.0;
 float ki = 0.0;
-float kd = 0.0;
+float kd = 0.9;
 
 // PID variables for front left motor
 long setpoint_fl, setpoint_fr, setpoint_bl, setpoint_br = 0;
@@ -69,7 +69,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 void setup() {
   Serial.begin(9600);
   pwm.begin();
-  pwm.setPWMFreq(800);  // This is the maximum PWM frequency
+  pwm.setPWMFreq(400);  // This is the maximum PWM frequency
   
   // Initialize encoder pins as inputs with pull-up resistors
   pinMode(ENC_FLA, INPUT_PULLUP);
