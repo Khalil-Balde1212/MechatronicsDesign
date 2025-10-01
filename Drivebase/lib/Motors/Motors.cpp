@@ -5,7 +5,7 @@ namespace Motors {
     
     void initialize() {
         pwm.begin();
-        pwm.setPWMFreq(400);
+        pwm.setPWMFreq(60);
         stopAll();
     }
     

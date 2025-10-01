@@ -7,6 +7,13 @@ MotorController::MotorController() {
     prev_error_fl = prev_error_fr = prev_error_bl = prev_error_br = 0.0f;
     filtered_derivative_fl = filtered_derivative_fr = filtered_derivative_bl = filtered_derivative_br = 0.0f;
     last_time_fl = last_time_fr = last_time_bl = last_time_br = 0;
+    
+    // Initialize speed PID variables
+    speed_setpoint_fl = speed_setpoint_fr = speed_setpoint_bl = speed_setpoint_br = 0.0f;
+    speed_integral_fl = speed_integral_fr = speed_integral_bl = speed_integral_br = 0.0f;
+    speed_prev_error_fl = speed_prev_error_fr = speed_prev_error_bl = speed_prev_error_br = 0.0f;
+    speed_last_time_fl = speed_last_time_fr = speed_last_time_bl = speed_last_time_br = 0;
+    speed_prev_count_fl = speed_prev_count_fr = speed_prev_count_bl = speed_prev_count_br = 0;
 }
 
 void MotorController::begin() {
@@ -18,13 +25,22 @@ void MotorController::begin() {
     Motors::stopAll();
     unsigned long now = millis();
     last_time_fl = last_time_fr = last_time_bl = last_time_br = now;
+    
+    // Initialize speed PID timing and encoder counts
+    speed_last_time_fl = speed_last_time_fr = speed_last_time_bl = speed_last_time_br = now;
+    speed_prev_count_fl = Encoders::getCountFL();
+    speed_prev_count_fr = Encoders::getCountFR();
+    speed_prev_count_bl = Encoders::getCountBL();
+    speed_prev_count_br = Encoders::getCountBR();
 
     Serial.println("Motor Controller Initialized");
     Serial.println("Commands:");
     Serial.println("- rX####: Rotate motors (X: side, ####: rotations)");
     Serial.println("  Sides: r=right, l=left, a=front right, b=back right, c=front left, d=back left");
     Serial.println("  f=forward all, t=turn all");
-    Serial.println("- kX####: Set PID gains (X: p=kp, i=ki, d=kd, ####: value)");
+    Serial.println("- sX####: Set speed (X: l=left, r=right, a=FR, b=BR, c=FL, d=BL, f=forward, t=turn, ####: RPM)");
+    Serial.println("- kX####: Set position PID gains (X: p=kp, i=ki, d=kd, ####: value)");
+    Serial.println("- skX####: Set speed PID gains (X: p=kp, i=ki, d=kd, ####: value)");
     Serial.println("- x: Reset all positions");
     Serial.println("- status: Display all current positions and setpoints");
 }
@@ -257,6 +273,214 @@ void MotorController::resetPIDVariables() {
     integral_fl = integral_fr = integral_bl = integral_br = 0.0f;
     prev_error_fl = prev_error_fr = prev_error_bl = prev_error_br = 0.0f;
     filtered_derivative_fl = filtered_derivative_fr = filtered_derivative_bl = filtered_derivative_br = 0.0f;
+    
+    // Reset speed PID variables
+    speed_setpoint_fl = speed_setpoint_fr = speed_setpoint_bl = speed_setpoint_br = 0.0f;
+    speed_integral_fl = speed_integral_fr = speed_integral_bl = speed_integral_br = 0.0f;
+    speed_prev_error_fl = speed_prev_error_fr = speed_prev_error_bl = speed_prev_error_br = 0.0f;
+    speed_prev_count_fl = Encoders::getCountFL();
+    speed_prev_count_fr = Encoders::getCountFR();
+    speed_prev_count_bl = Encoders::getCountBL();
+    speed_prev_count_br = Encoders::getCountBR();
+    unsigned long now = millis();
+    speed_last_time_fl = speed_last_time_fr = speed_last_time_bl = speed_last_time_br = now;
+}
+
+// Speed PID for Front Left motor
+float MotorController::speedPidFL() {
+    unsigned long current_time = millis();
+    float delta_time = (current_time - speed_last_time_fl) / 1000.0f;
+    
+    if (delta_time <= 0.0f) {
+        return 0.0f;
+    }
+    
+    // Calculate current speed in RPS
+    long current_count = Encoders::getCountFL();
+    long count_diff = current_count - speed_prev_count_fl;
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
+    
+    float error = speed_setpoint_fl - speed_rps;
+    
+    // Integral term with windup protection
+    speed_integral_fl += error * delta_time;
+    speed_integral_fl = constrain(speed_integral_fl, -100.0f, 100.0f);
+    
+    // Derivative term
+    float derivative = (error - speed_prev_error_fl) / delta_time;
+    
+    // PID output
+    float output = speed_kp * error + speed_ki * speed_integral_fl + speed_kd * derivative;
+    output = constrain(output, -4095.0f, 4095.0f);
+    
+    // Update previous values
+    speed_prev_error_fl = error;
+    speed_last_time_fl = current_time;
+    speed_prev_count_fl = current_count;
+    
+    Motors::setSpeedFL(static_cast<int>(output));
+    return output;
+}
+
+// Speed PID for Front Right motor
+float MotorController::speedPidFR() {
+    unsigned long current_time = millis();
+    float delta_time = (current_time - speed_last_time_fr) / 1000.0f;
+    
+    if (delta_time <= 0.0f) {
+        return 0.0f;
+    }
+    
+    // Calculate current speed in RPS
+    long current_count = Encoders::getCountFR();
+    long count_diff = current_count - speed_prev_count_fr;
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
+    
+    float error = speed_setpoint_fr - speed_rps;
+    
+    speed_integral_fr += error * delta_time;
+    speed_integral_fr = constrain(speed_integral_fr, -100.0f, 100.0f);
+    
+    float derivative = (error - speed_prev_error_fr) / delta_time;
+    
+    float output = speed_kp * error + speed_ki * speed_integral_fr + speed_kd * derivative;
+    output = constrain(output, -4095.0f, 4095.0f);
+    
+    speed_prev_error_fr = error;
+    speed_last_time_fr = current_time;
+    speed_prev_count_fr = current_count;
+    
+    Motors::setSpeedFR(static_cast<int>(output));
+    return output;
+}
+
+// Speed PID for Back Left motor
+float MotorController::speedPidBL() {
+    unsigned long current_time = millis();
+    float delta_time = (current_time - speed_last_time_bl) / 1000.0f;
+    
+    if (delta_time <= 0.0f) {
+        return 0.0f;
+    }
+    
+    // Calculate current speed in RPS
+    long current_count = Encoders::getCountBL();
+    long count_diff = current_count - speed_prev_count_bl;
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
+    
+    float error = speed_setpoint_bl - speed_rps;
+    
+    speed_integral_bl += error * delta_time;
+    speed_integral_bl = constrain(speed_integral_bl, -100.0f, 100.0f);
+    
+    float derivative = (error - speed_prev_error_bl) / delta_time;
+    
+    float output = speed_kp * error + speed_ki * speed_integral_bl + speed_kd * derivative;
+    output = constrain(output, -4095.0f, 4095.0f);
+    
+    speed_prev_error_bl = error;
+    speed_last_time_bl = current_time;
+    speed_prev_count_bl = current_count;
+    
+    Motors::setSpeedBL(static_cast<int>(output));
+    return output;
+}
+
+// Speed PID for Back Right motor
+float MotorController::speedPidBR() {
+    unsigned long current_time = millis();
+    float delta_time = (current_time - speed_last_time_br) / 1000.0f;
+    
+    if (delta_time <= 0.0f) {
+        return 0.0f;
+    }
+    
+    // Calculate current speed in RPS
+    long current_count = Encoders::getCountBR();
+    long count_diff = current_count - speed_prev_count_br;
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
+    
+    float error = speed_setpoint_br - speed_rps;
+    
+    speed_integral_br += error * delta_time;
+    speed_integral_br = constrain(speed_integral_br, -100.0f, 100.0f);
+    
+    float derivative = (error - speed_prev_error_br) / delta_time;
+    
+    float output = speed_kp * error + speed_ki * speed_integral_br + speed_kd * derivative;
+    output = constrain(output, -4095.0f, 4095.0f);
+    
+    speed_prev_error_br = error;
+    speed_last_time_br = current_time;
+    speed_prev_count_br = current_count;
+    
+    Motors::setSpeedBR(static_cast<int>(output));
+    return output;
+}
+
+// Update all speed PID controllers
+void MotorController::updateAllSpeedPID() {
+    speedPidFL();
+    speedPidFR();
+    speedPidBL();
+    speedPidBR();
+}
+
+// Position error getters (in encoder counts)
+long MotorController::getPositionErrorFL() const {
+    return setpoint_fl - Encoders::getCountFL();
+}
+
+long MotorController::getPositionErrorFR() const {
+    return setpoint_fr - Encoders::getCountFR();
+}
+
+long MotorController::getPositionErrorBL() const {
+    return setpoint_bl - Encoders::getCountBL();
+}
+
+long MotorController::getPositionErrorBR() const {
+    return setpoint_br - Encoders::getCountBR();
+}
+
+// Position error getters (in rotations)
+float MotorController::getPositionErrorRotationsFL() const {
+    return getPositionErrorFL() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsFR() const {
+    return getPositionErrorFR() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsBL() const {
+    return getPositionErrorBL() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsBR() const {
+    return getPositionErrorBR() / static_cast<float>(cpr);
+}
+
+// Claw servo control methods
+void MotorController::setClawAngle(float angle) {
+    // Constrain angle to valid servo range (0-180 degrees)
+    angle = constrain(angle, 0.0f, 180.0f);
+    claw_angle = angle;
+    
+    // Convert angle to PWM pulse width (typical servo: 1ms-2ms pulse, 50Hz)
+    // For Adafruit PWM driver: 0-4095 scale
+    // 1ms = ~205, 1.5ms = ~307, 2ms = ~410 (at 50Hz)
+    int pulse = map(angle, 0, 180, 150, 600);  // Map 0-180° to servo pulse range
+    
+    // Set the PWM for the claw servo
+    Motors::pwm.setPWM(CLAW_SERVO_CHANNEL, 0, pulse);
+}
+
+void MotorController::openClaw() {
+    setClawAngle(CLAW_OPEN_ANGLE);
+}
+
+void MotorController::closeClaw() {
+    setClawAngle(CLAW_CLOSED_ANGLE);
 }
 
 
