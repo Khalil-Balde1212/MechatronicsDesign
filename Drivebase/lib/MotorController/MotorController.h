@@ -44,6 +44,18 @@ public:
     float getSetpointRotationsBL() const { return setpoint_bl / static_cast<float>(cpr); }
     float getSetpointRotationsBR() const { return setpoint_br / static_cast<float>(cpr); }
     
+    // Position error getters (in encoder counts)
+    long getPositionErrorFL() const;
+    long getPositionErrorFR() const;
+    long getPositionErrorBL() const;
+    long getPositionErrorBR() const;
+    
+    // Position error getters (in rotations)
+    float getPositionErrorRotationsFL() const;
+    float getPositionErrorRotationsFR() const;
+    float getPositionErrorRotationsBL() const;
+    float getPositionErrorRotationsBR() const;
+    
     void resetPIDVariables();
     
     // Speed PID control methods
@@ -74,6 +86,12 @@ public:
     float getSpeedSetpointBL() const { return speed_setpoint_bl; }
     float getSpeedSetpointBR() const { return speed_setpoint_br; }
     
+    // Claw servo control
+    void setClawAngle(float angle);
+    void openClaw();
+    void closeClaw();
+    float getClawAngle() const { return claw_angle; }
+    
 private:
     static constexpr int cpr = 1440; // Counts per revolution
     static constexpr long HOLD_DEADBAND_COUNTS = 8;      // encoder tolerance band
@@ -101,6 +119,12 @@ private:
     float speed_prev_error_fl = 0.0f, speed_prev_error_fr = 0.0f, speed_prev_error_bl = 0.0f, speed_prev_error_br = 0.0f;
     unsigned long speed_last_time_fl = 0, speed_last_time_fr = 0, speed_last_time_bl = 0, speed_last_time_br = 0;
     long speed_prev_count_fl = 0, speed_prev_count_fr = 0, speed_prev_count_bl = 0, speed_prev_count_br = 0;
+    
+    // Claw servo variables
+    static constexpr int CLAW_SERVO_CHANNEL = 11;  // PWM channel 8 (unused by motors)
+    float claw_angle = 90.0f;  // Current claw angle (0-180 degrees)
+    static constexpr float CLAW_OPEN_ANGLE = 0.0f;   // Angle for open claw
+    static constexpr float CLAW_CLOSED_ANGLE =60.0f;   // Angle for closed claw
 };
 
 #endif

@@ -426,5 +426,62 @@ void MotorController::updateAllSpeedPID() {
     speedPidBR();
 }
 
+// Position error getters (in encoder counts)
+long MotorController::getPositionErrorFL() const {
+    return setpoint_fl - Encoders::getCountFL();
+}
+
+long MotorController::getPositionErrorFR() const {
+    return setpoint_fr - Encoders::getCountFR();
+}
+
+long MotorController::getPositionErrorBL() const {
+    return setpoint_bl - Encoders::getCountBL();
+}
+
+long MotorController::getPositionErrorBR() const {
+    return setpoint_br - Encoders::getCountBR();
+}
+
+// Position error getters (in rotations)
+float MotorController::getPositionErrorRotationsFL() const {
+    return getPositionErrorFL() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsFR() const {
+    return getPositionErrorFR() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsBL() const {
+    return getPositionErrorBL() / static_cast<float>(cpr);
+}
+
+float MotorController::getPositionErrorRotationsBR() const {
+    return getPositionErrorBR() / static_cast<float>(cpr);
+}
+
+// Claw servo control methods
+void MotorController::setClawAngle(float angle) {
+    // Constrain angle to valid servo range (0-180 degrees)
+    angle = constrain(angle, 0.0f, 180.0f);
+    claw_angle = angle;
+    
+    // Convert angle to PWM pulse width (typical servo: 1ms-2ms pulse, 50Hz)
+    // For Adafruit PWM driver: 0-4095 scale
+    // 1ms = ~205, 1.5ms = ~307, 2ms = ~410 (at 50Hz)
+    int pulse = map(angle, 0, 180, 150, 600);  // Map 0-180° to servo pulse range
+    
+    // Set the PWM for the claw servo
+    Motors::pwm.setPWM(CLAW_SERVO_CHANNEL, 0, pulse);
+}
+
+void MotorController::openClaw() {
+    setClawAngle(CLAW_OPEN_ANGLE);
+}
+
+void MotorController::closeClaw() {
+    setClawAngle(CLAW_CLOSED_ANGLE);
+}
+
 
 

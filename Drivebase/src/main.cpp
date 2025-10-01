@@ -23,6 +23,7 @@ enum PIDMode {
 };
 PIDMode currentPIDMode = POSITION_PID;
 
+static bool commandExecuted = false;
 int currentStep = -1;
 
 void processSerialCommand(String command);
@@ -34,11 +35,13 @@ void executeCommand(String command) {
   processSerialCommand(command);
 }
 void iterateStep(){
-  if (abs(Encoders::getRPSFL()) <= 0.05 && 
-      abs(Encoders::getRPSFR()) <= 0.05 && 
-      abs(Encoders::getRPSBL()) <= 0.05 && 
-      abs(Encoders::getRPSBR()) <= 0.05) {
+  if (abs(motorController.getPositionErrorRotationsFL()) <= 0.05 && 
+      abs(motorController.getPositionErrorRotationsFR()) <= 0.05 && 
+      abs(motorController.getPositionErrorRotationsBL()) <= 0.05 && 
+      abs(motorController.getPositionErrorRotationsBR()) <= 0.05 && commandExecuted == true) {
     currentStep++;
+    commandExecuted = false;
+    delay(100);
   }
 }
 
@@ -77,22 +80,68 @@ void loop() {
     stepChangeTime = millis();
   }
 
-      static bool commandExecuted = false;
   switch(currentStep){
     case 0:
       if (!commandExecuted) {
-        processSerialCommand("rf2"); // Move front right motor 2 rotations
+        processSerialCommand("close");
+        processSerialCommand("rf0.5"); // Move front right motor 2 rotations
         commandExecuted = true;
       }
       iterateStep();
       break;
     case 1:
       if (!commandExecuted) {
-        processSerialCommand("rt0.8"); // Move front right motor 2 rotations
+        processSerialCommand("rt-1"); // Move front right motor 2 rotations
         commandExecuted = true;
       }
       iterateStep();
       break;
+
+    case 2:
+    if (!commandExecuted) {
+        processSerialCommand("rf3"); // Move front right motor 2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+
+    case 3:
+      if (!commandExecuted) {
+        processSerialCommand("rt1"); // Move back right motor -2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    case 4:
+    
+      if (!commandExecuted) {
+        processSerialCommand("rf4"); // Move front right motor -2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    case 5:
+      if (!commandExecuted) {
+        processSerialCommand("open"); // Move front right motor -2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    case 6:
+      if (!commandExecuted) {
+        processSerialCommand("rf-1"); // Move front right motor -2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    case 7:
+      if (!commandExecuted) {
+        processSerialCommand("close"); // Reset all positions to 0
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    
     default: break;
 
   }
@@ -194,6 +243,27 @@ void processSerialCommand(String command) {
     currentPIDMode = (currentPIDMode == POSITION_PID) ? SPEED_PID : POSITION_PID;
     Serial.print("PID mode switched to: ");
     Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
+    return;
+  }
+
+  if (command.equalsIgnoreCase("open")) {
+    motorController.openClaw();
+    Serial.println("Claw opened");
+    return;
+  }
+
+  if (command.equalsIgnoreCase("close")) {
+    motorController.closeClaw();
+    Serial.println("Claw closed");
+    return;
+  }
+
+  if (command.startsWith("claw ")) {
+    float angle = command.substring(5).toFloat();
+    motorController.setClawAngle(angle);
+    Serial.print("Claw set to ");
+    Serial.print(angle);
+    Serial.println(" degrees");
     return;
   }
 
