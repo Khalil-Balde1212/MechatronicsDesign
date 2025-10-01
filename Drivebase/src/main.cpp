@@ -2,31 +2,42 @@
 #include <Wire.h>
 #include "MotorController.h"
 #include "Encoders.h"
+#include "IMU.h"
 
 MotorController motorController;
+IMUController imuController;
 void processSerialCommand(String command);
 
 void setup() {
-  Serial.begin(9600);
-  motorController.begin();
+    Serial.begin(9600);
+    motorController.begin();
+    if (!imuController.begin()) {
+        while (1); // Halt execution if IMU fails
+    }
 }
 
 void loop() {
-  motorController.updateAllPID();
+    imuController.update();
+    motorController.updateAllPID();
   
-  // Check for serial commands
-  if (Serial.available()) {
-    String command = Serial.readStringUntil('\n');
-    processSerialCommand(command);
-  }
+    // Check for serial commands
+    if (Serial.available()) {
+        String command = Serial.readStringUntil('\n');
+        processSerialCommand(command);
+    }
   
-  // Print status every 500ms
-  static unsigned long last_print = 0;
-  if (millis() - last_print > 500) {
-    Encoders::printRotations();
-    last_print = millis();
-  }
+    // Print status every 500ms
+    static unsigned long last_print = 0;
+    if (millis() - last_print > 500) {
+        // Encoders::printRotations();
+        imuController.printGyroData();
+        last_print = millis();
+    }
 }
+
+
+
+
 
 // Function to process serial commands
 void processSerialCommand(String command) {
