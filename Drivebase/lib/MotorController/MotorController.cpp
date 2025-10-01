@@ -38,10 +38,9 @@ void MotorController::begin() {
     Serial.println("- rX####: Rotate motors (X: side, ####: rotations)");
     Serial.println("  Sides: r=right, l=left, a=front right, b=back right, c=front left, d=back left");
     Serial.println("  f=forward all, t=turn all");
-    Serial.println("- sX####: Set speed (X: f=forward, b=backward, l=left, r=right, t=turn, ####: RPM)");
+    Serial.println("- sX####: Set speed (X: l=left, r=right, a=FR, b=BR, c=FL, d=BL, f=forward, t=turn, ####: RPM)");
     Serial.println("- kX####: Set position PID gains (X: p=kp, i=ki, d=kd, ####: value)");
     Serial.println("- skX####: Set speed PID gains (X: p=kp, i=ki, d=kd, ####: value)");
-    Serial.println("- mode: Toggle between Position PID and Speed PID");
     Serial.println("- x: Reset all positions");
     Serial.println("- status: Display all current positions and setpoints");
 }
@@ -296,12 +295,12 @@ float MotorController::speedPidFL() {
         return 0.0f;
     }
     
-    // Calculate current speed in RPM
+    // Calculate current speed in RPS
     long current_count = Encoders::getCountFL();
     long count_diff = current_count - speed_prev_count_fl;
-    float speed_rpm = (count_diff / static_cast<float>(cpr)) * (60.0f / delta_time);
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
     
-    float error = speed_setpoint_fl - speed_rpm;
+    float error = speed_setpoint_fl - speed_rps;
     
     // Integral term with windup protection
     speed_integral_fl += error * delta_time;
@@ -332,11 +331,12 @@ float MotorController::speedPidFR() {
         return 0.0f;
     }
     
+    // Calculate current speed in RPS
     long current_count = Encoders::getCountFR();
     long count_diff = current_count - speed_prev_count_fr;
-    float speed_rpm = (count_diff / static_cast<float>(cpr)) * (60.0f / delta_time);
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
     
-    float error = speed_setpoint_fr - speed_rpm;
+    float error = speed_setpoint_fr - speed_rps;
     
     speed_integral_fr += error * delta_time;
     speed_integral_fr = constrain(speed_integral_fr, -100.0f, 100.0f);
@@ -363,11 +363,12 @@ float MotorController::speedPidBL() {
         return 0.0f;
     }
     
+    // Calculate current speed in RPS
     long current_count = Encoders::getCountBL();
     long count_diff = current_count - speed_prev_count_bl;
-    float speed_rpm = (count_diff / static_cast<float>(cpr)) * (60.0f / delta_time);
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
     
-    float error = speed_setpoint_bl - speed_rpm;
+    float error = speed_setpoint_bl - speed_rps;
     
     speed_integral_bl += error * delta_time;
     speed_integral_bl = constrain(speed_integral_bl, -100.0f, 100.0f);
@@ -394,11 +395,12 @@ float MotorController::speedPidBR() {
         return 0.0f;
     }
     
+    // Calculate current speed in RPS
     long current_count = Encoders::getCountBR();
     long count_diff = current_count - speed_prev_count_br;
-    float speed_rpm = (count_diff / static_cast<float>(cpr)) * (60.0f / delta_time);
+    float speed_rps = (count_diff / static_cast<float>(cpr)) / delta_time;
     
-    float error = speed_setpoint_br - speed_rpm;
+    float error = speed_setpoint_br - speed_rps;
     
     speed_integral_br += error * delta_time;
     speed_integral_br = constrain(speed_integral_br, -100.0f, 100.0f);
