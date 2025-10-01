@@ -1,4 +1,4 @@
-#ifndef MOTORS_H
+﻿#ifndef MOTORS_H
 #define MOTORS_H
 
 #include <Arduino.h>
@@ -11,8 +11,8 @@ namespace Motors {
     const int MOTOR_FRB = 4;
     const int MOTOR_BLA = 13;
     const int MOTOR_BLB = 12;
-    const int MOTOR_BRA = 7;
-    const int MOTOR_BRB = 6;
+    const int MOTOR_BRA = 6;
+    const int MOTOR_BRB = 7;
     
     extern Adafruit_PWMServoDriver pwm;
     

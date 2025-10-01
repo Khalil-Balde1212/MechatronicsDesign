@@ -1,4 +1,4 @@
-#include "tof_cameras.h"
+﻿#include "tof_cameras.h"
 
 namespace TOF {
     bool TOFSensors::initialize(const int* xshutPinsArray,
@@ -35,12 +35,16 @@ namespace TOF {
             return false;
         }
 
-        // Initialise I2C with optional custom pins
+        // Initialise I2C with optional custom pins when supported by the core
+#if defined(ARDUINO_ARCH_SAMD)
         if (sdaPin == 0 && sclPin == 0) {
             Wire.begin();
         } else {
             Wire.begin(sdaPin, sclPin);
         }
+#else
+        Wire.begin();
+#endif
 
         // Prepare all XSHUT lines in reset
         for (int i = 0; i < SENSOR_COUNT; i++) {
@@ -177,3 +181,4 @@ namespace TOF {
         return 0.0;
     }
 } // namespace TOF
+
