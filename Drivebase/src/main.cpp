@@ -16,9 +16,31 @@ MotorController motorController;
 Navigation::Navigation navigation(motorController, tofSensors);
 bool printSensorDetails = false;
 
+// PID Mode Control
+enum PIDMode {
+  POSITION_PID,
+  SPEED_PID
+};
+PIDMode currentPIDMode = POSITION_PID;
+
+int currentStep = -1;
+
 void processSerialCommand(String command);
 void printStatus();
 void printSensorLine(const char *label, int sensorIndex);
+
+// Helper function to execute commands programmatically
+void executeCommand(String command) {
+  processSerialCommand(command);
+}
+void iterateStep(){
+  if (abs(Encoders::getRPSFL()) <= 0.05 && 
+      abs(Encoders::getRPSFR()) <= 0.05 && 
+      abs(Encoders::getRPSBL()) <= 0.05 && 
+      abs(Encoders::getRPSBR()) <= 0.05) {
+    currentStep++;
+  }
+}
 
 void setup() {
   Serial.begin(9600);
@@ -37,16 +59,49 @@ void setup() {
   }
 
   // navigation.begin();
+
 }
 
 void loop() {
-  motorController.updateAllPID();
+  // Automatically run the appropriate PID based on current mode
+  if (currentPIDMode == POSITION_PID) {
+    motorController.updateAllPID();
+  } else if (currentPIDMode == SPEED_PID) {
+    // motorController.updateAllSpeedPID();
+  }
+
+  static unsigned long stepChangeTime = 0;
+
+  if (currentStep == -1 && millis() - stepChangeTime >= 500) {
+    currentStep = 0;
+    stepChangeTime = millis();
+  }
+
+      static bool commandExecuted = false;
+  switch(currentStep){
+    case 0:
+      if (!commandExecuted) {
+        processSerialCommand("rf2"); // Move front right motor 2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    case 1:
+      if (!commandExecuted) {
+        processSerialCommand("rt0.8"); // Move front right motor 2 rotations
+        commandExecuted = true;
+      }
+      iterateStep();
+      break;
+    default: break;
+
+  }
 
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
     processSerialCommand(command);
   }
-  // navigation.update();
+  
 
   //print outs
   static unsigned long lastPrint = 0;
@@ -62,7 +117,11 @@ void loop() {
     // Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
 
     // Print encoder rotations per second
-    Encoders::printRotations();
+    if(currentPIDMode == POSITION_PID) {
+      Encoders::printRotations();
+    } else if(currentPIDMode == SPEED_PID) {
+      Encoders::printRPS();
+    }
 
     // if (printSensorDetails) {
     //   for (int i = 0; i < TOF::SENSOR_COUNT; ++i) {
@@ -131,11 +190,22 @@ void processSerialCommand(String command) {
     return;
   }
 
+  if (command.equalsIgnoreCase("pidmode")) {
+    currentPIDMode = (currentPIDMode == POSITION_PID) ? SPEED_PID : POSITION_PID;
+    Serial.print("PID mode switched to: ");
+    Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
+    return;
+  }
+
   if (command.length() >= 2) {
     char firstChar = command.charAt(0);
     char secondChar = command.charAt(1);
 
     if (firstChar == 'n') {
+      // Switch to position PID mode
+      currentPIDMode = POSITION_PID;
+      Serial.println("Switched to POSITION PID mode");
+      
       float value = command.substring(2).toFloat();
 
       switch (secondChar) {
@@ -171,6 +241,10 @@ void processSerialCommand(String command) {
     }
 
     if (firstChar == 'r') {
+      // Switch to position PID mode
+      currentPIDMode = POSITION_PID;
+      Serial.println("Switched to POSITION PID mode");
+      
       float value = command.substring(2).toFloat();
 
       switch (secondChar) {
@@ -268,6 +342,10 @@ void processSerialCommand(String command) {
     }
 
     if (firstChar == 's') {
+      // Switch to speed PID mode
+      currentPIDMode = SPEED_PID;
+      Serial.println("Switched to SPEED PID mode");
+      
       // Speed setpoint commands (in RPS)
       float value = command.substring(2).toFloat();
 
@@ -369,6 +447,8 @@ void processSerialCommand(String command) {
 
 void printStatus() {
   Serial.println("=== System Status ===");
+  Serial.print("PID Mode: ");
+  Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
   Serial.print("Auto: ");
   Serial.println(navigation.isAutoActive() ? "ENABLED" : "DISABLED");
   Serial.print("Moving: ");
