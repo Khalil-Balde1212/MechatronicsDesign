@@ -4,28 +4,35 @@
 #include <Arduino.h>
 #include <Adafruit_PWMServoDriver.h>
 
-namespace Motors {
-    const int MOTOR_FLA = 14;
-    const int MOTOR_FLB = 15;
-    const int MOTOR_FRA = 5;
-    const int MOTOR_FRB = 4;
-    const int MOTOR_BLA = 13;
-    const int MOTOR_BLB = 12;
-    const int MOTOR_BRA = 7;
-    const int MOTOR_BRB = 6;
+// Individual Motor class
+class Motor {
+private:
+    int pinA;
+    int pinB;
+    int currentSpeed;
+    bool inverted;
+    static Adafruit_PWMServoDriver* pwmDriver;
+    static bool pwmInitialized;  // Track if PWM driver is initialized
     
-    extern Adafruit_PWMServoDriver pwm;
+public:
+    Motor(int motorPinA, int motorPinB, bool invert = false);
     
-    void initialize();
+    // Motor control methods
+    void setSpeed(int speed);           // Set motor speed (-4095 to 4095)
+    void stop();                        // Stop the motor
+    void brake();                       // Brake the motor (both pins high)
     
-    void setSpeed(int motorPin1, int motorPin2, int speed);
-    void setSpeeds(float left, float right);
-    void stopAll();
+    // Configuration methods
+    void setInverted(bool invert);
+    bool getInverted() const { return inverted; }
     
-    void setSpeedFL(int speed);
-    void setSpeedFR(int speed);
-    void setSpeedBL(int speed);
-    void setSpeedBR(int speed);
-}
+    // Status methods
+    int getCurrentSpeed() const { return currentSpeed; }
+    void printStatus();
+    
+    // Static method to initialize PWM driver (call once)
+    static void initializePWM();
+    static void setPWMFrequency(int frequency);
+};
 
 #endif
