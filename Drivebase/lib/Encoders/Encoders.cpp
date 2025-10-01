@@ -6,6 +6,13 @@ namespace Encoders {
     volatile long countBL = 0;
     volatile long countBR = 0;
     
+    // Variables for RPS calculation
+    static long prevCountFL = 0;
+    static long prevCountFR = 0;
+    static long prevCountBL = 0;
+    static long prevCountBR = 0;
+    static unsigned long prevTime = 0;
+    
     void initializePins() {
         pinMode(ENC_FLA, INPUT_PULLUP);
         pinMode(ENC_FLB, INPUT_PULLUP);
@@ -41,6 +48,9 @@ namespace Encoders {
     
     void resetAll() {
         resetCounts();
+        // Reset RPS tracking variables
+        prevCountFL = prevCountFR = prevCountBL = prevCountBR = 0;
+        prevTime = millis();
     }
     
     void printCounts() {
@@ -123,6 +133,100 @@ namespace Encoders {
         return getCountBR() / (float)CPR;
     }
     
+    // RPS (Rotations Per Second) functions
+    void printRPS() {
+        unsigned long currentTime = millis();
+        float deltaTime = (currentTime - prevTime) / 1000.0f;
+        
+        if (deltaTime <= 0.0f) {
+            Serial.println("RPS - FL: 0.00, FR: 0.00, BL: 0.00, BR: 0.00");
+            return;
+        }
+        
+        noInterrupts();
+        long currentCountFL = countFL;
+        long currentCountFR = countFR;
+        long currentCountBL = countBL;
+        long currentCountBR = countBR;
+        interrupts();
+        
+        float rpsFL = ((currentCountFL - prevCountFL) / (float)CPR) / deltaTime;
+        float rpsFR = ((currentCountFR - prevCountFR) / (float)CPR) / deltaTime;
+        float rpsBL = ((currentCountBL - prevCountBL) / (float)CPR) / deltaTime;
+        float rpsBR = ((currentCountBR - prevCountBR) / (float)CPR) / deltaTime;
+        
+        Serial.print("RPS - FL: ");
+        Serial.print(rpsFL, 2);
+        Serial.print(", FR: ");
+        Serial.print(rpsFR, 2);
+        Serial.print(", BL: ");
+        Serial.print(rpsBL, 2);
+        Serial.print(", BR: ");
+        Serial.println(rpsBR, 2);
+        
+        // Update previous values
+        prevCountFL = currentCountFL;
+        prevCountFR = currentCountFR;
+        prevCountBL = currentCountBL;
+        prevCountBR = currentCountBR;
+        prevTime = currentTime;
+    }
+    
+    float getRPSFL() {
+        unsigned long currentTime = millis();
+        float deltaTime = (currentTime - prevTime) / 1000.0f;
+        
+        if (deltaTime <= 0.0f) return 0.0f;
+        
+        noInterrupts();
+        long currentCount = countFL;
+        interrupts();
+        
+        float rps = ((currentCount - prevCountFL) / (float)CPR) / deltaTime;
+        return rps;
+    }
+    
+    float getRPSFR() {
+        unsigned long currentTime = millis();
+        float deltaTime = (currentTime - prevTime) / 1000.0f;
+        
+        if (deltaTime <= 0.0f) return 0.0f;
+        
+        noInterrupts();
+        long currentCount = countFR;
+        interrupts();
+        
+        float rps = ((currentCount - prevCountFR) / (float)CPR) / deltaTime;
+        return rps;
+    }
+    
+    float getRPSBL() {
+        unsigned long currentTime = millis();
+        float deltaTime = (currentTime - prevTime) / 1000.0f;
+        
+        if (deltaTime <= 0.0f) return 0.0f;
+        
+        noInterrupts();
+        long currentCount = countBL;
+        interrupts();
+        
+        float rps = ((currentCount - prevCountBL) / (float)CPR) / deltaTime;
+        return rps;
+    }
+    
+    float getRPSBR() {
+        unsigned long currentTime = millis();
+        float deltaTime = (currentTime - prevTime) / 1000.0f;
+        
+        if (deltaTime <= 0.0f) return 0.0f;
+        
+        noInterrupts();
+        long currentCount = countBR;
+        interrupts();
+        
+        float rps = ((currentCount - prevCountBR) / (float)CPR) / deltaTime;
+        return rps;
+    }
 
     // Interrupt service routines
     void ISR_FL() {

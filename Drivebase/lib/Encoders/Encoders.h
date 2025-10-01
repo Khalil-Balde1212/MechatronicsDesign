@@ -27,6 +27,7 @@ namespace Encoders {
     void resetAll();
     void printCounts();
     void printRotations();
+    void printRPS();
     
     long getCountFL();
     long getCountFR();
@@ -37,6 +38,11 @@ namespace Encoders {
     float getRotationsFR();
     float getRotationsBL();
     float getRotationsBR();
+    
+    float getRPSFL();
+    float getRPSFR();
+    float getRPSBL();
+    float getRPSBR();
     
     void ISR_FL();
     void ISR_FR();

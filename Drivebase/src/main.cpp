@@ -34,7 +34,9 @@ void setup() {
     Serial.println("TOF sensors initialized successfully");
   }
 
-  navigation.begin();
+  // navigation.begin();
+
+  
 }
 
 void loop() {
@@ -59,6 +61,10 @@ void loop() {
     Serial.println(navigation.getMinDistance());
     Serial.print("Sensor details: ");
     Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
+
+    // Print encoder rotations per second
+    Serial.println("\n=== Motor Speeds ===");
+    Encoders::printRPS();
 
     if (printSensorDetails) {
       for (int i = 0; i < TOF::SENSOR_COUNT; ++i) {
