@@ -1,4 +1,4 @@
-#ifndef MOTOR_CONTROLLER_H
+﻿#ifndef MOTOR_CONTROLLER_H
 #define MOTOR_CONTROLLER_H
 
 #include <Arduino.h>
@@ -39,24 +39,28 @@ public:
     long getSetpointBL() const { return setpoint_bl; }
     long getSetpointBR() const { return setpoint_br; }
     
-    // Setpoint getters in rotations  
-    float getSetpointRotationsFL() const { return setpoint_fl / (float)cpr; }
-    float getSetpointRotationsFR() const { return setpoint_fr / (float)cpr; }
-    float getSetpointRotationsBL() const { return setpoint_bl / (float)cpr; }
-    float getSetpointRotationsBR() const { return setpoint_br / (float)cpr; }
+    float getSetpointRotationsFL() const { return setpoint_fl / static_cast<float>(cpr); }
+    float getSetpointRotationsFR() const { return setpoint_fr / static_cast<float>(cpr); }
+    float getSetpointRotationsBL() const { return setpoint_bl / static_cast<float>(cpr); }
+    float getSetpointRotationsBR() const { return setpoint_br / static_cast<float>(cpr); }
     
     void resetPIDVariables();
     
 private:
-    static const int cpr = 1440; // Counts per revolution
-    
-    float kp = 25.0;
-    float ki = 0.0;
-    float kd = 0.9;
+    static constexpr int cpr = 1440; // Counts per revolution
+    static constexpr long HOLD_DEADBAND_COUNTS = 8;      // encoder tolerance band
+    static constexpr float INTEGRAL_FREEZE_COUNTS = 4.0f; // freeze I-term near zero
+    static constexpr int PID_MIN_EFFORT = 700;           // minimum PWM magnitude
+    static constexpr float DERIVATIVE_ALPHA = 0.6f;      // low-pass filter on derivative
+
+    float kp = 25.0f;
+    float ki = 0.0f;
+    float kd = 0.9f;
     
     long setpoint_fl = 0, setpoint_fr = 0, setpoint_bl = 0, setpoint_br = 0;
-    float integral_fl = 0, integral_fr = 0, integral_bl = 0, integral_br = 0;
-    float prev_error_fl = 0, prev_error_fr = 0, prev_error_bl = 0, prev_error_br = 0;
+    float integral_fl = 0.0f, integral_fr = 0.0f, integral_bl = 0.0f, integral_br = 0.0f;
+    float prev_error_fl = 0.0f, prev_error_fr = 0.0f, prev_error_bl = 0.0f, prev_error_br = 0.0f;
+    float filtered_derivative_fl = 0.0f, filtered_derivative_fr = 0.0f, filtered_derivative_bl = 0.0f, filtered_derivative_br = 0.0f;
     unsigned long last_time_fl = 0, last_time_fr = 0, last_time_bl = 0, last_time_br = 0;
 };
 

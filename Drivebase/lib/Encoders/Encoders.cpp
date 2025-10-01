@@ -1,4 +1,4 @@
-#include "Encoders.h"
+﻿#include "Encoders.h"
 
 namespace Encoders {
     volatile long countFL = 0;
