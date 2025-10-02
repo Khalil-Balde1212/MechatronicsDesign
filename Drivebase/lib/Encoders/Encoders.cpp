@@ -40,19 +40,26 @@ float Encoder::getRotations() {
 }
 
 float Encoder::getRPS() {
+    // Sample count and time atomically, compute rate over the interval
     noInterrupts();
     unsigned long currentTime = millis();
-    float deltaTime = (currentTime - prevTime) / 1000.0f;
-    
-    if (deltaTime <= 0.0f) {
-        interrupts();
-        return 0.0f;
-    }
-    
     long currentCount = count;
     interrupts();
-    
+
+    float deltaTime = (currentTime - prevTime) / 1000.0f;
+    if (deltaTime <= 0.0f) {
+        return 0.0f;
+    }
+
+    // Compute RPS based on change since last sample
     float rps = ((currentCount - prevCount) / (float)CPR) / deltaTime;
+
+    // Update previous values for next interval (do atomically)
+    noInterrupts();
+    prevCount = currentCount;
+    prevTime = currentTime;
+    interrupts();
+
     return rps;
 }
 
