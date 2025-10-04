@@ -17,7 +17,8 @@ private:
 
 public:
     Encoder(int encoderPinA, int encoderPinB, bool invert = false);
-    void begin();                    // Initialize pins and setup
+    void begin();
+    // Initialize pins and setup
     void reset();                    // Reset count to zero
     void resetRPS();                 // Reset RPS calculation baseline
     

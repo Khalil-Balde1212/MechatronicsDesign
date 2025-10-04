@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 #include <Adafruit_PWMServoDriver.h>
+#include <Encoders.h>
 
 // PID Controller structure
 struct PIDController {
     float kp, ki, kd;           // PID gains
     float target;               // Target value
+    float current;              // Current value
     float error, lastError;     // Current and previous error
     float integral;             // Integral term
     float output;               // PID output
@@ -29,13 +31,15 @@ private:
     bool inverted;
     static Adafruit_PWMServoDriver* pwmDriver;
     static bool pwmInitialized;  // Track if PWM driver is initialized
+
+    Encoder *encoder;
     
     // PID Controllers
-    PIDController speedPID;     // Speed control PID
-    PIDController positionPID;  // Position control PID
+    PIDController speedPID;
+    PIDController positionPID;
     
     // Control state
-    enum ControlMode { MANUAL, SPEED_CONTROL, POSITION_CONTROL };
+    enum ControlMode { MANUAL, SPEED_CONTROL, RAW_POSITION_CONTROL };
     ControlMode controlMode;
     
     // Helper methods
@@ -43,13 +47,13 @@ private:
     void resetPID(PIDController& pid);
     
 public:
-    Motor(int motorPinA, int motorPinB, bool invert = false);
+    Motor(int motorPinA, int motorPinB, Encoder enc, bool invert = false);
     
     // Basic motor control methods
     void setSpeed(int speed);           // Manual speed control (-4095 to 4095)
-    void stop();                        // Stop the motor
+    void coast();                        // Stop the motor
     void brake();                       // Brake the motor (both pins high)
-    
+
     // PID Speed Control
     void setTargetSpeed(float targetRPS);     // Set target speed in RPS
     void setSpeedPID(float kp, float ki, float kd);  // Configure speed PID gains
@@ -57,13 +61,13 @@ public:
     void enableSpeedControl(bool enable);     // Enable/disable speed PID
     
     // PID Position Control  
-    void setTargetPosition(long targetTicks); // Set target position in encoder ticks
-    void setPositionPID(float kp, float ki, float kd); // Configure position PID gains
-    void setPositionTolerance(float tolerance); // Set position tolerance (ticks)
-    void enablePositionControl(bool enable);  // Enable/disable position PID
+    void setTargetPosition(long targetTicks);
+    void setPositionPID(float kp, float ki, float kd);
+    void setPositionTolerance(float tolerance);
+    void enableRawPositionControl(bool enable); 
     
     // Control update (call in loop)
-    void updateControl(float currentRPS, long currentPosition);
+    void updateControl();
     
     // Configuration methods
     void setInverted(bool invert);
@@ -77,6 +81,9 @@ public:
     bool isSpeedAtTarget() const { return speedPID.atTarget; }
     bool isPositionAtTarget() const { return positionPID.atTarget; }
     const char* getControlMode() const;
+    Encoder* getEncoder() const { return encoder; }
+    long getCurrentPosition() const { return encoder->getCount(); }
+
     void printStatus();
     void printPIDStatus();
     
