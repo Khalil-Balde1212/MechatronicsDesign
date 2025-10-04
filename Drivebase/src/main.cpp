@@ -12,9 +12,9 @@ Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
 Encoder encoderBL(RobotMap::ENC_BLA, RobotMap::ENC_BLB);
 Encoder encoderBR(RobotMap::ENC_BRA, RobotMap::ENC_BRB);
 
-// Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB);
-// Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB);
-// Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB);
+Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB, &encoderFL);
+Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB, &encoderFR);
+Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB, &encoderBL);
 Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
 
 void setup()
@@ -33,6 +33,9 @@ void setup()
 
     encoderBR.setInverted(true);
     motorBR.setInverted(true);
+
+    encoderFL.setInverted(false);
+    // motorFL.setInverted(true);
 
     encoderFR.setInverted(true);
     
@@ -60,13 +63,28 @@ void setup()
 
     motorBR.enableRawPositionControl(true);
     motorBR.setPositionPID(100, 0, 0);
-    motorBR.setTargetPosition(2880); // Example: Move to 1 rotation (1440 ticks)
+    motorBR.setTargetPosition(2880);
+
+    motorBL.enableRawPositionControl(true);
+    motorBL.setPositionPID(100, 0, 0);
+    motorBL.setTargetPosition(2880);
+
+    motorFR.enableRawPositionControl(true);
+    motorFR.setPositionPID(100, 0, 0);
+    motorFR.setTargetPosition(2880);
+
+    motorFL.enableRawPositionControl(true);
+    motorFL.setPositionPID(100, 0, 0);
+    motorFL.setTargetPosition(2880);
 }
 
 void loop()
 {
     // Update back right motor control loop
     motorBR.updateControl();
+    motorBL.updateControl();
+    motorFR.updateControl();
+    motorFL.updateControl();
     // motorBR.setSpeed(motorBR.calculatePID(motorBR.positionPID, encoderBR.getCount()));
     interpretCommands();
 
