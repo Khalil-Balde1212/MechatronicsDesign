@@ -5,6 +5,7 @@
 
 void interpretCommands();
 void printDebug();
+void printAllEncoderCounts();
 // Global encoder objects
 Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
 Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
@@ -32,6 +33,10 @@ void setup()
 
     encoderBR.setInverted(true);
     motorBR.setInverted(true);
+
+    encoderFR.setInverted(true);
+    
+    // encoderFL
 
     // Attach interrupts for all encoders
     attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []()
@@ -66,8 +71,11 @@ void loop()
     interpretCommands();
 
     // printDebug();
-    Serial.print("> pos:");
-    Serial.println(encoderBR.getCount());
+    // Serial.print("> pos:");
+    // Serial.println(encoderBR.getCount());
+
+    // printDebug();
+    printAllEncoderCounts();
 }
 
 void interpretCommands()
@@ -202,6 +210,17 @@ void printDebug()
     }
 }
 
+void printAllEncoderCounts()
+{
+    Serial.print("FL Encoder: ");
+    Serial.print(encoderFL.getCount());
+    Serial.print(" | FR Encoder: ");
+    Serial.print(encoderFR.getCount());
+    Serial.print(" | BL Encoder: ");
+    Serial.print(encoderBL.getCount());
+    Serial.print(" | BR Encoder: ");
+    Serial.println(encoderBR.getCount());
+}
 
 
 // void printStatus()
