@@ -34,20 +34,21 @@ private:
 
     Encoder *encoder;
     
-    // PID Controllers
-    PIDController speedPID;
-    PIDController positionPID;
     
     // Control state
     enum ControlMode { MANUAL, SPEED_CONTROL, RAW_POSITION_CONTROL };
     ControlMode controlMode;
     
-    // Helper methods
-    float calculatePID(PIDController& pid, float currentValue, bool stopAtTarget = true);
     void resetPID(PIDController& pid);
     
 public:
-    Motor(int motorPinA, int motorPinB, Encoder enc, bool invert = false);
+    // PID Controllers
+    PIDController speedPID;
+    PIDController positionPID;
+    // Helper methods
+    float calculatePID(PIDController& pid, float currentValue, bool stopAtTarget = true);
+    
+    Motor(int motorPinA, int motorPinB, Encoder* enc, bool invert = false);
     
     // Basic motor control methods
     void setSpeed(int speed);           // Manual speed control (-4095 to 4095)

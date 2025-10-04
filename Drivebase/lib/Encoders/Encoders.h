@@ -13,7 +13,7 @@ private:
     unsigned long prevTime;
     bool inverted;                   // Flag to invert encoder direction
     
-    static const int CPR = 1440;
+    static const int CPR = 2880;
 
 public:
     Encoder(int encoderPinA, int encoderPinB, bool invert = false);

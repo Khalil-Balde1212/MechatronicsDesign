@@ -3,6 +3,8 @@
 #include "Encoders.h"
 #include "Motors.h"
 
+void interpretCommands();
+void printDebug();
 // Global encoder objects
 Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
 Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
@@ -12,100 +14,138 @@ Encoder encoderBR(RobotMap::ENC_BRA, RobotMap::ENC_BRB);
 // Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB);
 // Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB);
 // Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB);
-Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, encoderBR);
+Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
 
-void setup() {
+void setup()
+{
     Serial.begin(9600);
-    
+
     // Initialize motor PWM driver
     Motor::initializePWM();
     Serial.println("Motor PWM initialized");
-    
+
     // Initialize all encoders
     encoderFL.begin();
     encoderFR.begin();
     encoderBL.begin();
     encoderBR.begin();
-    
+
+    encoderBR.setInverted(true);
+    motorBR.setInverted(true);
+
     // Attach interrupts for all encoders
-    attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []() { encoderFL.updateCount(); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(encoderFR.getPinA()), []() { encoderFR.updateCount(); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(encoderBL.getPinA()), []() { encoderBL.updateCount(); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(encoderBR.getPinA()), []() { encoderBR.updateCount(); }, CHANGE);
-    
+    attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []()
+                    { encoderFL.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderFR.getPinA()), []()
+                    { encoderFR.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderBL.getPinA()), []()
+                    { encoderBL.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderBR.getPinA()), []()
+                    { encoderBR.updateCount(); }, CHANGE);
+
     // motorFL.stop();
     // motorFR.stop();
     // motorBL.stop();
-    motorBR.stop();
-    
+    motorBR.coast();
+
     Serial.println("Setup complete - Motor and Encoders ready!");
-    
+
     // Enable position control for back right motor
-    motorBR.enablePositionControl(true);
+    motorBR.enableRawPositionControl(true);
+
+    motorBR.enableRawPositionControl(true);
+    motorBR.setPositionPID(100, 0, 0);
+    motorBR.setTargetPosition(2880); // Example: Move to 1 rotation (1440 ticks)
 }
 
-void loop() {
+void loop()
+{
     // Update back right motor control loop
-    motorBR.updateControl(encoderBR.getRPS(), encoderBR.getCount());
-    
+    motorBR.updateControl();
+    // motorBR.setSpeed(motorBR.calculatePID(motorBR.positionPID, encoderBR.getCount()));
+    interpretCommands();
+
+    // printDebug();
+    Serial.print("> pos:");
+    Serial.println(encoderBR.getCount());
+}
+
+
+
+void interpretCommands()
+{
     // Check for serial input
-    if (Serial.available() > 0) {
+    if (Serial.available() > 0)
+    {
         String input = Serial.readStringUntil('\n');
         input.trim(); // Remove whitespace
-        
-        if (input.equalsIgnoreCase("reset")) {
+
+        if (input.equalsIgnoreCase("reset"))
+        {
             encoderBR.reset();
             Serial.println("Encoder reset to 0");
-            
-        } else if (input.equalsIgnoreCase("stop")) {
-            motorBR.enablePositionControl(false);
+        }
+        else if (input.equalsIgnoreCase("stop"))
+        {
+            motorBR.enableRawPositionControl(false);
             motorBR.enableSpeedControl(false);
-            motorBR.stop();
+            motorBR.coast();
             Serial.println("All control disabled - motor stopped (manual mode)");
-            
-        } else if (input.startsWith("s") || input.startsWith("S")) {
+        }
+        else if (input.startsWith("s") || input.startsWith("S"))
+        {
             // Speed control command (e.g., "s2.5", "s-1.0", "s0")
             String speedStr = input.substring(1); // Remove 's' prefix
             float targetSpeed = speedStr.toFloat();
-            
-            if (speedStr.equals("0") || targetSpeed != 0.0 || speedStr.indexOf("0") >= 0) {
+
+            if (speedStr.equals("0") || targetSpeed != 0.0 || speedStr.indexOf("0") >= 0)
+            {
                 motorBR.enableSpeedControl(true);
                 motorBR.setTargetSpeed(targetSpeed);
                 Serial.print("Speed control enabled - Target: ");
                 Serial.print(targetSpeed, 1);
                 Serial.println(" RPS");
-            } else {
+            }
+            else
+            {
                 Serial.println("Invalid speed command. Use format: s2.5, s-1.0, s0");
             }
-            
-        } else if (input.startsWith("kp")) {
+        }
+        else if (input.startsWith("kp"))
+        {
             float value = input.substring(2).toFloat();
-            motorBR.setSpeedPID(value, motorBR.getTargetSpeed(), motorBR.getTargetPosition());
-            motorBR.setPositionPID(value, motorBR.getTargetSpeed(), motorBR.getTargetPosition());
+            motorBR.setSpeedPID(value, motorBR.positionPID.ki, motorBR.positionPID.kd);
             Serial.print("Set kp to ");
             Serial.println(value);
-        } else if (input.startsWith("ki")) {
+        }
+        else if (input.startsWith("ki"))
+        {
             float value = input.substring(2).toFloat();
-            motorBR.setSpeedPID(motorBR.getTargetSpeed(), value, motorBR.getTargetPosition());
-            motorBR.setPositionPID(motorBR.getTargetSpeed(), value, motorBR.getTargetPosition());
+            motorBR.setSpeedPID(motorBR.positionPID.kp , value, motorBR.positionPID.kd);
             Serial.print("Set ki to ");
             Serial.println(value);
-        } else if (input.startsWith("kd")) {
+        }
+        else if (input.startsWith("kd"))
+        {
             float value = input.substring(2).toFloat();
-            motorBR.setSpeedPID(motorBR.getTargetSpeed(), motorBR.getTargetPosition(), value);
-            motorBR.setPositionPID(motorBR.getTargetSpeed(), motorBR.getTargetPosition(), value);
+            motorBR.setSpeedPID(motorBR.positionPID.kp, motorBR.positionPID.ki, value);
             Serial.print("Set kd to ");
             Serial.println(value);
-        } else {
+        }
+        else
+        {
             // Try to parse as position number
             long newPosition = input.toInt();
-            if (input.equals("0") || newPosition != 0) {
-                motorBR.enablePositionControl(true);
+            if (input.equals("0") || newPosition != 0)
+            {
+                motorBR.enableRawPositionControl(true);
                 motorBR.setTargetPosition(newPosition);
                 Serial.print("Position control enabled - Target: ");
                 Serial.print(newPosition);
                 Serial.println(" ticks");
-            } else {
+            }
+            else
+            {
                 Serial.println("Invalid command. Examples:");
                 Serial.println("  Position: 1440, -720, 0");
                 Serial.println("  Speed: s2.5, s-1.0, s0");
@@ -114,48 +154,52 @@ void loop() {
             }
         }
     }
-
-    Serial.print("> pos:");
-    Serial.println(encoderBR.getCount());
 }
 
-    void printDebug(){
-        // Print status every second
+void printDebug()
+{
+    // Print status every second
     static unsigned long lastPrint = 0;
-    if (millis() - lastPrint > 1000) {
+    if (millis() - lastPrint > 1000)
+    {
         lastPrint = millis();
-        
+
         // Only print back right motor info
         Serial.print("BR Encoder - Position: ");
         Serial.print(encoderBR.getCount());
         Serial.print(" ticks, Speed: ");
         Serial.print(encoderBR.getRPS(), 2);
         Serial.print(" RPS | ");
-        
+
         Serial.print("Motor - Mode: ");
         Serial.print(motorBR.getControlMode());
-        
+
         // Show different info based on control mode
-        if (strcmp(motorBR.getControlMode(), "Position") == 0) {
+        if (strcmp(motorBR.getControlMode(), "Position") == 0)
+        {
             Serial.print(", Pos Target: ");
             Serial.print(motorBR.getTargetPosition());
             Serial.print(", Error: ");
             Serial.print(motorBR.getTargetPosition() - encoderBR.getCount());
-        } else if (strcmp(motorBR.getControlMode(), "Speed") == 0) {
+        }
+        else if (strcmp(motorBR.getControlMode(), "Speed") == 0)
+        {
             Serial.print(", Speed Target: ");
             Serial.print(motorBR.getTargetSpeed(), 1);
             Serial.print(" RPS, Error: ");
             Serial.print(motorBR.getTargetSpeed() - encoderBR.getRPS(), 2);
         }
-        
+
         // Show if motor has reached target
-        if (motorBR.isAtTarget()) {
+        if (motorBR.isAtTarget())
+        {
             Serial.print(" ✓ AT TARGET");
-        } else {
+        }
+        else
+        {
             Serial.print(" → Moving");
         }
-        
-        Serial.println();
 
+        Serial.println();
     }
 }
