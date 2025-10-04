@@ -78,25 +78,5 @@ void Motor::enableRawPositionControl(bool enable) {
     } else if (controlMode == RAW_POSITION_CONTROL) {
         controlMode = MANUAL;
     }
-<<<<<<< HEAD
-    
-    void setSpeedFL(int speed) {
-        setSpeed(MOTOR_FLA, MOTOR_FLB, speed);
-    }
-    
-    void setSpeedFR(int speed) {
-        setSpeed(MOTOR_FRA, MOTOR_FRB, speed);
-    }
-    
-    void setSpeedBL(int speed) {
-        setSpeed(MOTOR_BLA, MOTOR_BLB, speed);
-    }
-    
-    void setSpeedBR(int speed) {
-        setSpeed(MOTOR_BRA, MOTOR_BRB, speed);
-    }
-}
-=======
 }
 
->>>>>>> origin/Cleanup

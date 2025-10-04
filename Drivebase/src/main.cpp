@@ -70,8 +70,6 @@ void loop()
     Serial.println(encoderBR.getCount());
 }
 
-
-
 void interpretCommands()
 {
     // Check for serial input
@@ -121,7 +119,7 @@ void interpretCommands()
         else if (input.startsWith("ki"))
         {
             float value = input.substring(2).toFloat();
-            motorBR.setSpeedPID(motorBR.positionPID.kp , value, motorBR.positionPID.kd);
+            motorBR.setSpeedPID(motorBR.positionPID.kp, value, motorBR.positionPID.kd);
             Serial.print("Set ki to ");
             Serial.println(value);
         }
@@ -202,276 +200,80 @@ void printDebug()
 
         Serial.println();
     }
-
-    if (firstChar == 'r') {
-      // Switch to position PID mode
-      currentPIDMode = POSITION_PID;
-      Serial.println("Switched to POSITION PID mode");
-      
-      float value = command.substring(2).toFloat();
-
-      switch (secondChar) {
-        case 'l':
-          motorController.setPositionFL(value);
-          motorController.setPositionBL(value);
-          Serial.print("Left motors set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'r':
-          motorController.setPositionFR(value);
-          motorController.setPositionBR(value);
-          Serial.print("Right motors set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'a':
-          motorController.setPositionFR(value);
-          Serial.print("Front Right motor set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'b':
-          motorController.setPositionBR(value);
-          Serial.print("Back Right motor set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'c':
-          motorController.setPositionFL(value);
-          Serial.print("Front Left motor set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'd':
-          motorController.setPositionBL(value);
-          Serial.print("Back Left motor set to ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'f':
-          motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
-          motorController.setPositionFR(motorController.getSetpointRotationsFR() + value);
-          motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
-          motorController.setPositionBR(motorController.getSetpointRotationsBR() + value);
-          Serial.print("All motors set to ");
-          Serial.print(value);
-          Serial.println(" rotations (forward)");
-          break;
-        case 't':
-          motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
-          motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
-          motorController.setPositionFR(motorController.getSetpointRotationsFR() - value);
-          motorController.setPositionBR(motorController.getSetpointRotationsBR() - value);
-          Serial.print("Turn command: Left side ");
-          Serial.print(value);
-          Serial.print(" rotations, Right side ");
-          Serial.print(-value);
-          Serial.println(" rotations");
-          break;
-        default:
-          Serial.println("Unknown position command");
-          break;
-      }
-      return;
-    }
-
-    // Check for speed PID gain commands (sk prefix) first
-    if (firstChar == 's' && secondChar == 'k' && command.length() >= 4) {
-      char thirdChar = command.charAt(2);
-      float value = command.substring(3).toFloat();
-
-      switch (thirdChar) {
-        case 'p':
-          motorController.setSpeedKp(value);
-          Serial.print("Speed Kp set to ");
-          Serial.println(value);
-          break;
-        case 'i':
-          motorController.setSpeedKi(value);
-          Serial.print("Speed Ki set to ");
-          Serial.println(value);
-          break;
-        case 'd':
-          motorController.setSpeedKd(value);
-          Serial.print("Speed Kd set to ");
-          Serial.println(value);
-          break;
-        default:
-          Serial.println("Unknown speed PID gain command (use skp, ski, or skd)");
-          break;
-      }
-      return;
-    }
-
-    if (firstChar == 's') {
-      // Switch to speed PID mode
-      currentPIDMode = SPEED_PID;
-      Serial.println("Switched to SPEED PID mode");
-      
-      // Speed setpoint commands (in RPS)
-      float value = command.substring(2).toFloat();
-
-      switch (secondChar) {
-        case 'l':
-          motorController.setSpeedSetpointFL(value);
-          motorController.setSpeedSetpointBL(value);
-          Serial.print("Left motors speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'r':
-          motorController.setSpeedSetpointFR(value);
-          motorController.setSpeedSetpointBR(value);
-          Serial.print("Right motors speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'a':
-          motorController.setSpeedSetpointFR(value);
-          Serial.print("Front Right motor speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'b':
-          motorController.setSpeedSetpointBR(value);
-          Serial.print("Back Right motor speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'c':
-          motorController.setSpeedSetpointFL(value);
-          Serial.print("Front Left motor speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'd':
-          motorController.setSpeedSetpointBL(value);
-          Serial.print("Back Left motor speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS");
-          break;
-        case 'f':
-          motorController.setSpeedSetpointFL(value);
-          motorController.setSpeedSetpointFR(value);
-          motorController.setSpeedSetpointBL(value);
-          motorController.setSpeedSetpointBR(value);
-          Serial.print("All motors speed set to ");
-          Serial.print(value);
-          Serial.println(" RPS (forward)");
-          break;
-        case 't':
-          motorController.setSpeedSetpointFL(value);
-          motorController.setSpeedSetpointBL(value);
-          motorController.setSpeedSetpointFR(-value);
-          motorController.setSpeedSetpointBR(-value);
-          Serial.print("Turn command: Left side ");
-          Serial.print(value);
-          Serial.print(" RPS, Right side ");
-          Serial.print(-value);
-          Serial.println(" RPS");
-          break;
-        default:
-          Serial.println("Unknown speed command");
-          break;
-      }
-      return;
-    }
-
-    if (firstChar == 'k') {
-      float value = command.substring(2).toFloat();
-
-      switch (secondChar) {
-        case 'p':
-          motorController.setKp(value);
-          Serial.print("Position Kp set to ");
-          Serial.println(value);
-          break;
-        case 'i':
-          motorController.setKi(value);
-          Serial.print("Position Ki set to ");
-          Serial.println(value);
-          break;
-        case 'd':
-          motorController.setKd(value);
-          Serial.print("Position Kd set to ");
-          Serial.println(value);
-          break;
-        default:
-          Serial.println("Unknown position PID gain command (use kp, ki, or kd)");
-          break;
-      }
-      return;
-    }
-  }
-
-  Serial.println("Unknown command");
 }
 
-void printStatus() {
-  Serial.println("=== System Status ===");
-  Serial.print("PID Mode: ");
-  Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
-  Serial.print("Auto: ");
-  Serial.println(navigation.isAutoActive() ? "ENABLED" : "DISABLED");
-  Serial.print("Moving: ");
-  Serial.println(navigation.isMoving() ? "YES" : "NO");
-  Serial.print("Minimum distance (cm): ");
-  Serial.println(navigation.getMinDistance());
-  Serial.print("Sensor detail output: ");
-  Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
 
-  Serial.println("--- Sensor Status ---");
-  for (int i = 0; i < TOF::SENSOR_COUNT; ++i) {
-    Serial.print("Sensor ");
-    Serial.print(i);
-    Serial.print(": ");
-    printSensorLine("", i);
-  }
 
-  Serial.println("--- Motor Status ---");
-  Serial.print("FL: Current=");
-  Serial.print(Encoders::getRotationsFL());
-  Serial.print(" rotations, Setpoint=");
-  Serial.print(motorController.getSetpointRotationsFL());
-  Serial.println(" rotations");
+// void printStatus()
+// {
+//     Serial.println("=== System Status ===");
+//     Serial.print("PID Mode: ");
+//     Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
+//     Serial.print("Auto: ");
+//     Serial.println(navigation.isAutoActive() ? "ENABLED" : "DISABLED");
+//     Serial.print("Moving: ");
+//     Serial.println(navigation.isMoving() ? "YES" : "NO");
+//     Serial.print("Minimum distance (cm): ");
+//     Serial.println(navigation.getMinDistance());
+//     Serial.print("Sensor detail output: ");
+//     Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
 
-  Serial.print("FR: Current=");
-  Serial.print(Encoders::getRotationsFR());
-  Serial.print(" rotations, Setpoint=");
-  Serial.print(motorController.getSetpointRotationsFR());
-  Serial.println(" rotations");
+//     Serial.println("--- Sensor Status ---");
+//     for (int i = 0; i < TOF::SENSOR_COUNT; ++i)
+//     {
+//         Serial.print("Sensor ");
+//         Serial.print(i);
+//         Serial.print(": ");
+//         printSensorLine("", i);
+//     }
 
-  Serial.print("BL: Current=");
-  Serial.print(Encoders::getRotationsBL());
-  Serial.print(" rotations, Setpoint=");
-  Serial.print(motorController.getSetpointRotationsBL());
-  Serial.println(" rotations");
+//     Serial.println("--- Motor Status ---");
+//     Serial.print("FL: Current=");
+//     Serial.print(Encoders::getRotationsFL());
+//     Serial.print(" rotations, Setpoint=");
+//     Serial.print(motorController.getSetpointRotationsFL());
+//     Serial.println(" rotations");
 
-  Serial.print("BR: Current=");
-  Serial.print(Encoders::getRotationsBR());
-  Serial.print(" rotations, Setpoint=");
-  Serial.print(motorController.getSetpointRotationsBR());
-  Serial.println(" rotations");
+//     Serial.print("FR: Current=");
+//     Serial.print(Encoders::getRotationsFR());
+//     Serial.print(" rotations, Setpoint=");
+//     Serial.print(motorController.getSetpointRotationsFR());
+//     Serial.println(" rotations");
 
-  Serial.print("PID Gains: Kp=");
-  Serial.print(motorController.getKp());
-  Serial.print(", Ki=");
-  Serial.print(motorController.getKi());
-  Serial.print(", Kd=");
-  Serial.println(motorController.getKd());
-  Serial.println("====================");
-}
+//     Serial.print("BL: Current=");
+//     Serial.print(Encoders::getRotationsBL());
+//     Serial.print(" rotations, Setpoint=");
+//     Serial.print(motorController.getSetpointRotationsBL());
+//     Serial.println(" rotations");
 
-void printSensorLine(const char *label, int sensorIndex) {
-  float distance = tofSensors.getFilteredDistanceCM(sensorIndex);
-  bool timeout = tofSensors.sensorTimeout(sensorIndex) || distance <= 0.0f;
+//     Serial.print("BR: Current=");
+//     Serial.print(Encoders::getRotationsBR());
+//     Serial.print(" rotations, Setpoint=");
+//     Serial.print(motorController.getSetpointRotationsBR());
+//     Serial.println(" rotations");
 
-  Serial.print(label);
-  if (timeout) {
-    Serial.println("TIMEOUT");
-  } else {
-    Serial.print(distance);
-    Serial.println(" cm");
-  }
-}
+//     Serial.print("PID Gains: Kp=");
+//     Serial.print(motorController.getKp());
+//     Serial.print(", Ki=");
+//     Serial.print(motorController.getKi());
+//     Serial.print(", Kd=");
+//     Serial.println(motorController.getKd());
+//     Serial.println("====================");
+// }
+
+// void printSensorLine(const char *label, int sensorIndex)
+// {
+//     float distance = tofSensors.getFilteredDistanceCM(sensorIndex);
+//     bool timeout = tofSensors.sensorTimeout(sensorIndex) || distance <= 0.0f;
+
+//     Serial.print(label);
+//     if (timeout)
+//     {
+//         Serial.println("TIMEOUT");
+//     }
+//     else
+//     {
+//         Serial.print(distance);
+//         Serial.println(" cm");
+//     }
+// }
