@@ -1,313 +1,206 @@
 ﻿#include <Arduino.h>
-#include <Wire.h>
-
-#include "MotorController.h"
+#include "RobotMap.h"
 #include "Encoders.h"
 #include "Motors.h"
-#include "tof_cameras.h"
-#include "Navigation.h"
 
-// Pin definitions for TOF sensors (XSHUT order: BR, BL, FL, FR)
-const int TOF_XSHUT_PINS[TOF::SENSOR_COUNT] = {5, 6, 12, 13};
-const uint8_t TOF_ADDRESSES[TOF::SENSOR_COUNT] = {0x30, 0x31, 0x32, 0x33};
+void interpretCommands();
+void printDebug();
+// Global encoder objects
+Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
+Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
+Encoder encoderBL(RobotMap::ENC_BLA, RobotMap::ENC_BLB);
+Encoder encoderBR(RobotMap::ENC_BRA, RobotMap::ENC_BRB);
 
-TOF::TOFSensors tofSensors;
-MotorController motorController;
-Navigation::Navigation navigation(motorController, tofSensors);
-bool printSensorDetails = false;
+// Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB);
+// Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB);
+// Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB);
+Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
 
-// PID Mode Control
-enum PIDMode {
-  POSITION_PID,
-  SPEED_PID
-};
-PIDMode currentPIDMode = POSITION_PID;
+void setup()
+{
+    Serial.begin(9600);
 
-static bool commandExecuted = false;
-int currentStep = -1;
+    // Initialize motor PWM driver
+    Motor::initializePWM();
+    Serial.println("Motor PWM initialized");
 
-void processSerialCommand(String command);
-void printStatus();
-void printSensorLine(const char *label, int sensorIndex);
+    // Initialize all encoders
+    encoderFL.begin();
+    encoderFR.begin();
+    encoderBL.begin();
+    encoderBR.begin();
 
-// Helper function to execute commands programmatically
-void executeCommand(String command) {
-  processSerialCommand(command);
-}
-void iterateStep(){
-  if (abs(motorController.getPositionErrorRotationsFL()) <= 0.05 && 
-      abs(motorController.getPositionErrorRotationsFR()) <= 0.05 && 
-      abs(motorController.getPositionErrorRotationsBL()) <= 0.05 && 
-      abs(motorController.getPositionErrorRotationsBR()) <= 0.05 && commandExecuted == true) {
-    currentStep++;
-    commandExecuted = false;
-    delay(100);
-  }
-}
+    encoderBR.setInverted(true);
+    motorBR.setInverted(true);
 
-void setup() {
-  Serial.begin(9600);
-  Serial.println("Starting initialization...");
+    // Attach interrupts for all encoders
+    attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []()
+                    { encoderFL.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderFR.getPinA()), []()
+                    { encoderFR.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderBL.getPinA()), []()
+                    { encoderBL.updateCount(); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoderBR.getPinA()), []()
+                    { encoderBR.updateCount(); }, CHANGE);
 
-  motorController.begin();
-  Motors::stopAll();
-  Serial.println("Motor controller initialized");
+    // motorFL.stop();
+    // motorFR.stop();
+    // motorBL.stop();
+    motorBR.coast();
 
-  if (!tofSensors.initialize(TOF_XSHUT_PINS, TOF_ADDRESSES, 0, 0)) {
-    Serial.println("Failed to configure TOF sensors");
-  } else if (!tofSensors.begin()) {
-    Serial.println("TOF sensor initialization encountered errors");
-  } else {
-    Serial.println("TOF sensors initialized successfully");
-  }
+    Serial.println("Setup complete - Motor and Encoders ready!");
 
-  // navigation.begin();
+    // Enable position control for back right motor
+    motorBR.enableRawPositionControl(true);
 
+    motorBR.enableRawPositionControl(true);
+    motorBR.setPositionPID(100, 0, 0);
+    motorBR.setTargetPosition(2880); // Example: Move to 1 rotation (1440 ticks)
 }
 
-void loop() {
-  // Automatically run the appropriate PID based on current mode
-  if (currentPIDMode == POSITION_PID) {
-    motorController.updateAllPID();
-  } else if (currentPIDMode == SPEED_PID) {
-    // motorController.updateAllSpeedPID();
-  }
+void loop()
+{
+    // Update back right motor control loop
+    motorBR.updateControl();
+    // motorBR.setSpeed(motorBR.calculatePID(motorBR.positionPID, encoderBR.getCount()));
+    interpretCommands();
 
-  static unsigned long stepChangeTime = 0;
+    // printDebug();
+    Serial.print("> pos:");
+    Serial.println(encoderBR.getCount());
+}
 
-  if (currentStep == -1 && millis() - stepChangeTime >= 500) {
-    currentStep = 0;
-    stepChangeTime = millis();
-  }
 
-  switch(currentStep){
-    case 0:
-      if (!commandExecuted) {
-        processSerialCommand("close");
-        processSerialCommand("rf0.5"); // Move front right motor 2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    case 1:
-      if (!commandExecuted) {
-        processSerialCommand("rt-1"); // Move front right motor 2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
 
-    case 2:
-    if (!commandExecuted) {
-        processSerialCommand("rf3"); // Move front right motor 2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
+void interpretCommands()
+{
+    // Check for serial input
+    if (Serial.available() > 0)
+    {
+        String input = Serial.readStringUntil('\n');
+        input.trim(); // Remove whitespace
 
-    case 3:
-      if (!commandExecuted) {
-        processSerialCommand("rt1"); // Move back right motor -2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    case 4:
-    
-      if (!commandExecuted) {
-        processSerialCommand("rf4"); // Move front right motor -2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    case 5:
-      if (!commandExecuted) {
-        processSerialCommand("open"); // Move front right motor -2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    case 6:
-      if (!commandExecuted) {
-        processSerialCommand("rf-1"); // Move front right motor -2 rotations
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    case 7:
-      if (!commandExecuted) {
-        processSerialCommand("close"); // Reset all positions to 0
-        commandExecuted = true;
-      }
-      iterateStep();
-      break;
-    
-    default: break;
+        if (input.equalsIgnoreCase("reset"))
+        {
+            encoderBR.reset();
+            Serial.println("Encoder reset to 0");
+        }
+        else if (input.equalsIgnoreCase("stop"))
+        {
+            motorBR.enableRawPositionControl(false);
+            motorBR.enableSpeedControl(false);
+            motorBR.coast();
+            Serial.println("All control disabled - motor stopped (manual mode)");
+        }
+        else if (input.startsWith("s") || input.startsWith("S"))
+        {
+            // Speed control command (e.g., "s2.5", "s-1.0", "s0")
+            String speedStr = input.substring(1); // Remove 's' prefix
+            float targetSpeed = speedStr.toFloat();
 
-  }
-
-  if (Serial.available()) {
-    String command = Serial.readStringUntil('\n');
-    processSerialCommand(command);
-  }
-  
-
-  //print outs
-  static unsigned long lastPrint = 0;
-  if (millis() - lastPrint >= 100) {
-    // Serial.println("\n=== Navigation ===");
-    // Serial.print("Auto: ");
-    // Serial.println(navigation.isAutoActive() ? "ENABLED" : "DISABLED");
-    // Serial.print("Moving: ");
-    // Serial.println(navigation.isMoving() ? "YES" : "NO");
-    // Serial.print("Minimum distance (cm): ");
-    // Serial.println(navigation.getMinDistance());
-    // Serial.print("Sensor details: ");
-    // Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
-
-    // Print encoder rotations per second
-    if(currentPIDMode == POSITION_PID) {
-      Encoders::printRotations();
-    } else if(currentPIDMode == SPEED_PID) {
-      Encoders::printRPS();
+            if (speedStr.equals("0") || targetSpeed != 0.0 || speedStr.indexOf("0") >= 0)
+            {
+                motorBR.enableSpeedControl(true);
+                motorBR.setTargetSpeed(targetSpeed);
+                Serial.print("Speed control enabled - Target: ");
+                Serial.print(targetSpeed, 1);
+                Serial.println(" RPS");
+            }
+            else
+            {
+                Serial.println("Invalid speed command. Use format: s2.5, s-1.0, s0");
+            }
+        }
+        else if (input.startsWith("kp"))
+        {
+            float value = input.substring(2).toFloat();
+            motorBR.setSpeedPID(value, motorBR.positionPID.ki, motorBR.positionPID.kd);
+            Serial.print("Set kp to ");
+            Serial.println(value);
+        }
+        else if (input.startsWith("ki"))
+        {
+            float value = input.substring(2).toFloat();
+            motorBR.setSpeedPID(motorBR.positionPID.kp , value, motorBR.positionPID.kd);
+            Serial.print("Set ki to ");
+            Serial.println(value);
+        }
+        else if (input.startsWith("kd"))
+        {
+            float value = input.substring(2).toFloat();
+            motorBR.setSpeedPID(motorBR.positionPID.kp, motorBR.positionPID.ki, value);
+            Serial.print("Set kd to ");
+            Serial.println(value);
+        }
+        else
+        {
+            // Try to parse as position number
+            long newPosition = input.toInt();
+            if (input.equals("0") || newPosition != 0)
+            {
+                motorBR.enableRawPositionControl(true);
+                motorBR.setTargetPosition(newPosition);
+                Serial.print("Position control enabled - Target: ");
+                Serial.print(newPosition);
+                Serial.println(" ticks");
+            }
+            else
+            {
+                Serial.println("Invalid command. Examples:");
+                Serial.println("  Position: 1440, -720, 0");
+                Serial.println("  Speed: s2.5, s-1.0, s0");
+                Serial.println("  Utility: reset, stop");
+                Serial.println("  PID: kp5.0 ki0.1 kd1.0");
+            }
+        }
     }
-
-    // if (printSensorDetails) {
-    //   for (int i = 0; i < TOF::SENSOR_COUNT; ++i) {
-    //     float distance = tofSensors.getFilteredDistanceCM(i);
-    //     bool timeout = tofSensors.sensorTimeout(i) || distance <= 0.0f;
-    //     Serial.print("Sensor ");
-    //     Serial.print(i);
-    //     Serial.print(" (XSHUT pin ");
-    //     Serial.print(TOF_XSHUT_PINS[i]);
-    //     Serial.print(") : ");
-    //     if (timeout) {
-    //       Serial.println("TIMEOUT");
-    //     } else {
-    //       Serial.print(distance);
-    //       Serial.println(" cm");
-    //     }
-    //   }
-    // }
-
-    // Serial.println("===================\n");
-    lastPrint = millis();
-  }
 }
 
-void processSerialCommand(String command) {
-  command.trim();
-  if (command.length() == 0) {
-    return;
-  }
+void printDebug()
+{
+    // Print status every second
+    static unsigned long lastPrint = 0;
+    if (millis() - lastPrint > 1000)
+    {
+        lastPrint = millis();
 
-  if (command.equalsIgnoreCase("stop")) {
-    navigation.stop();
-    Serial.println("Navigation stopped");
-    return;
-  }
+        // Only print back right motor info
+        Serial.print("BR Encoder - Position: ");
+        Serial.print(encoderBR.getCount());
+        Serial.print(" ticks, Speed: ");
+        Serial.print(encoderBR.getRPS(), 2);
+        Serial.print(" RPS | ");
 
-  if (command.equalsIgnoreCase("auto")) {
-    navigation.startAuto();
-    Serial.println("Auto navigation started");
-    return;
-  }
+        Serial.print("Motor - Mode: ");
+        Serial.print(motorBR.getControlMode());
 
-  if (command.equalsIgnoreCase("manual")) {
-    navigation.stopAuto();
-    Serial.println("Auto navigation stopped");
-    return;
-  }
+        // Show different info based on control mode
+        if (strcmp(motorBR.getControlMode(), "Position") == 0)
+        {
+            Serial.print(", Pos Target: ");
+            Serial.print(motorBR.getTargetPosition());
+            Serial.print(", Error: ");
+            Serial.print(motorBR.getTargetPosition() - encoderBR.getCount());
+        }
+        else if (strcmp(motorBR.getControlMode(), "Speed") == 0)
+        {
+            Serial.print(", Speed Target: ");
+            Serial.print(motorBR.getTargetSpeed(), 1);
+            Serial.print(" RPS, Error: ");
+            Serial.print(motorBR.getTargetSpeed() - encoderBR.getRPS(), 2);
+        }
 
-  if (command.equalsIgnoreCase("status")) {
-    printStatus();
-    return;
-  }
+        // Show if motor has reached target
+        if (motorBR.isAtTarget())
+        {
+            Serial.print(" ✓ AT TARGET");
+        }
+        else
+        {
+            Serial.print(" → Moving");
+        }
 
-  if (command.equalsIgnoreCase("sensors")) {
-    printSensorDetails = !printSensorDetails;
-    Serial.print("Sensor detail printing ");
-    Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
-    return;
-  }
-
-  if (command.equalsIgnoreCase("x")) {
-    navigation.stop();
-    Encoders::resetAll();
-    motorController.resetPIDVariables();
-    Serial.println("All positions reset to 0");
-    return;
-  }
-
-  if (command.equalsIgnoreCase("pidmode")) {
-    currentPIDMode = (currentPIDMode == POSITION_PID) ? SPEED_PID : POSITION_PID;
-    Serial.print("PID mode switched to: ");
-    Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
-    return;
-  }
-
-  if (command.equalsIgnoreCase("open")) {
-    motorController.openClaw();
-    Serial.println("Claw opened");
-    return;
-  }
-
-  if (command.equalsIgnoreCase("close")) {
-    motorController.closeClaw();
-    Serial.println("Claw closed");
-    return;
-  }
-
-  if (command.startsWith("claw ")) {
-    float angle = command.substring(5).toFloat();
-    motorController.setClawAngle(angle);
-    Serial.print("Claw set to ");
-    Serial.print(angle);
-    Serial.println(" degrees");
-    return;
-  }
-
-  if (command.length() >= 2) {
-    char firstChar = command.charAt(0);
-    char secondChar = command.charAt(1);
-
-    if (firstChar == 'n') {
-      // Switch to position PID mode
-      currentPIDMode = POSITION_PID;
-      Serial.println("Switched to POSITION PID mode");
-      
-      float value = command.substring(2).toFloat();
-
-      switch (secondChar) {
-        case 'f':
-          navigation.moveForward(value);
-          Serial.print("Moving forward ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'b':
-          navigation.moveBackward(value);
-          Serial.print("Moving backward ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'l':
-          navigation.turnLeft(value);
-          Serial.print("Turning left ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        case 'r':
-          navigation.turnRight(value);
-          Serial.print("Turning right ");
-          Serial.print(value);
-          Serial.println(" rotations");
-          break;
-        default:
-          Serial.println("Unknown navigation command (use nf, nb, nl, nr)");
-          break;
-      }
-      return;
+        Serial.println();
     }
 
     if (firstChar == 'r') {
