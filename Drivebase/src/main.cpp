@@ -1,8 +1,5 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "MotorController.h"
-#include "Encoders.h"
-#include "IMU.h"
 
 MotorController motorController;
 IMUController imuController;
