@@ -1,5 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
+#include "MotorController.h"
+#include "Encoders.h"
+#include "IMU.h"
 
 MotorController motorController;
 IMUController imuController;
@@ -7,14 +11,28 @@ void processSerialCommand(String command);
 
 void setup() {
     Serial.begin(9600);
+
+    // --- IMU/Nano 33 IoT specifics (from Arduino guidance) ---
+    // Let native USB enumerate so you see startup messages.
+    unsigned long _t0 = millis();
+    while (!Serial && (millis() - _t0 < 2000)) { /* wait up to ~2s */ }
+
+    // Ensure I2C is up (IMU is I2C). Safe even if library handles it.
+    Wire.begin();
+    // ----------------------------------------------------------
+
     motorController.begin();
+
+    // IMU init (halt on failure as in Arduino examples)
     if (!imuController.begin()) {
-        while (1); // Halt execution if IMU fails
+        while (1) { /* Halt execution if IMU fails */ }
     }
 }
 
 void loop() {
+    // Keep IMU readings fresh each loop
     imuController.update();
+
     motorController.updateAllPID();
   
     // Check for serial commands
@@ -27,14 +45,18 @@ void loop() {
     static unsigned long last_print = 0;
     if (millis() - last_print > 500) {
         // Encoders::printRotations();
-        imuController.printGyroData();
+
+        // Print IMU data if initialized, using library units:
+        // Gyro -> deg/s, Accel -> g (per Arduino_LSM6DS3 docs)
+        if (imuController.isInitialized()) {
+            Serial.print("[IMU] ");
+            imuController.printGyroData();   // deg/s
+            imuController.printAccelData();  // g
+        }
+
         last_print = millis();
     }
 }
-
-
-
-
 
 // Function to process serial commands
 void processSerialCommand(String command) {
