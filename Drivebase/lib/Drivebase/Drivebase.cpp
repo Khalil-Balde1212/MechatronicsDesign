@@ -5,6 +5,7 @@
 #include <Encoders.h>
 
 namespace DriveBase {
+    // Define the global variables here
     Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
     Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
     Encoder encoderBL(RobotMap::ENC_BLA, RobotMap::ENC_BLB);
@@ -14,6 +15,8 @@ namespace DriveBase {
     Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB, &encoderFR);
     Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB, &encoderBL);
     Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
+
+    int predictiveHeading = 0;
 
     void begin() {
         // Initialize all encoders
@@ -57,6 +60,11 @@ namespace DriveBase {
         motorFR.updateControl();
         motorBL.updateControl();
         motorBR.updateControl();
-    }
 
+        // Update predictive heading
+        predictiveHeading = 
+            (encoderFL.getRPS() + encoderFR.getRPS())/2 -
+            (encoderBL.getRPS() + encoderBR.getRPS())/2;
+        // predictiveHeading = 
+    }
 }
