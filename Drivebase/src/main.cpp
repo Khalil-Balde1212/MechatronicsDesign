@@ -55,13 +55,17 @@ void setup()
     CommandInterpreter::begin();
     CommandInterpreter::registerCommand({"ping", [](const std::string* args)
     {
-        Serial.println("pong");
-    }, "Simple Connection Debug"});
-
-
-
-
-
+        int count;
+        if (args == nullptr)
+            count = 1;
+        else
+            count = atoi(args[0].c_str());
+            
+        for (int i = 0; i < count; ++i)
+            Serial.println("pong");
+    },
+    "Usage: ping ## \n Sends 'pong' response. Optionally specify number of times to respond."
+    });
 }
 
 void loop()
