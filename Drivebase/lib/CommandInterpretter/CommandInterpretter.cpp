@@ -4,8 +4,10 @@
 #include <string>
 
 namespace CommandInterpreter {
+    std::vector<command> commands; // Define the commands vector
+    
     void begin() {
-        commands.begin();
+        commands.clear(); // Use clear() instead of begin() for vector
         Serial.println("Command Interpreter Initialized");
     }
 
@@ -26,17 +28,22 @@ namespace CommandInterpreter {
 
             for (const auto& cmd : commands) {
                 if (input.startsWith(cmd.name)) {
-                    // parse arguments by delimiting with space
-                    const std::string* args = input.length() > strlen(cmd.name) ? 
-                        new std::string(input.substring(strlen(cmd.name)).c_str()) : nullptr;
+                    // Extract arguments after the command name
+                    String argsString = "";
+                    if (input.length() > strlen(cmd.name)) {
+                        argsString = input.substring(strlen(cmd.name));
+                        argsString.trim(); // Remove leading/trailing whitespace
+                    }
                     
-                    if(args[0] == "h" || args[0] == "help") // Print help message
-                    {
+                    // Check for help request
+                    if(argsString == "h" || argsString == "help") {
                         Serial.println(cmd.help);
                         return;
                     }
                     
-                    cmd.function(args);
+                    // Convert to std::string and call the function
+                    std::string args(argsString.c_str());
+                    cmd.function(&args);
                     return;
                 }
             }

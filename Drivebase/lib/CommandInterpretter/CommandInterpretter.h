@@ -8,11 +8,10 @@ namespace CommandInterpreter {
     struct command {
         const char* name;
         void (*function)(const std::string* args);
-
         const char* help; //help message
     };
     
-    std::vector<command> commands;
+    extern std::vector<command> commands; // Declare as extern
 
     void begin();
     bool registerCommand(const command& cmd);
