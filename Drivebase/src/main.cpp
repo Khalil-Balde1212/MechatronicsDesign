@@ -1,7 +1,9 @@
-﻿#include <Arduino.h>
-#include "RobotMap.h"
+#include <Arduino.h>
+#include <Wire.h>
+#include <SPI.h>
+#include "MotorController.h"
 #include "Encoders.h"
-#include "Motors.h"
+#include "IMU.h"
 
 #include "CommandInterpretter.h"
 
@@ -12,25 +14,20 @@ Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
 Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
 Encoder encoderBL(RobotMap::ENC_BLA, RobotMap::ENC_BLB);
 Encoder encoderBR(RobotMap::ENC_BRA, RobotMap::ENC_BRB);
+MotorController motorController;
+IMUController imuController;
 
-// Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB);
-// Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB);
-// Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB);
-Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
+void processSerialCommand(String command);
 
-void setup()
-{
+void setup() {
     Serial.begin(9600);
 
-    // Initialize motor PWM driver
-    Motor::initializePWM();
-    Serial.println("Motor PWM initialized");
+    unsigned long _t0 = millis();
+    while (!Serial && (millis() - _t0 < 2000)) { }
 
-    // Initialize all encoders
-    encoderFL.begin();
-    encoderFR.begin();
-    encoderBL.begin();
-    encoderBR.begin();
+    Wire.begin();
+    
+    motorController.begin();
 
     encoderBR.setInverted(true);
     motorBR.setInverted(true);
@@ -99,100 +96,16 @@ void printDebug()
             Serial.print(", Error: ");
             Serial.print(motorBR.getTargetPosition() - encoderBR.getCount());
         }
-        else if (strcmp(motorBR.getControlMode(), "Speed") == 0)
-        {
-            Serial.print(", Speed Target: ");
-            Serial.print(motorBR.getTargetSpeed(), 1);
-            Serial.print(" RPS, Error: ");
-            Serial.print(motorBR.getTargetSpeed() - encoderBR.getRPS(), 2);
-        }
-
-        // Show if motor has reached target
-        if (motorBR.isAtTarget())
-        {
-            Serial.print(" ✓ AT TARGET");
-        }
-        else
-        {
-            Serial.print(" → Moving");
-        }
-
-        Serial.println();
+        Serial.println("==============\n");
+    } else if (command == "help") {
+        Serial.println("\n=== COMMANDS ===");
+        Serial.println("Motors: rl/rr/ra/rb/rc/rd/rf/rt");
+        Serial.println("PID: kp/ki/kd");
+        Serial.println("IMU: ir ia is ic");
+        Serial.println("Other: x status help");
+        Serial.println("================\n");
+    } else if (command.length() > 0) {
+        Serial.println("Unknown (type 'help')");
     }
 }
 
-
-
-// void printStatus()
-// {
-//     Serial.println("=== System Status ===");
-//     Serial.print("PID Mode: ");
-//     Serial.println(currentPIDMode == POSITION_PID ? "POSITION" : "SPEED");
-//     Serial.print("Auto: ");
-//     Serial.println(navigation.isAutoActive() ? "ENABLED" : "DISABLED");
-//     Serial.print("Moving: ");
-//     Serial.println(navigation.isMoving() ? "YES" : "NO");
-//     Serial.print("Minimum distance (cm): ");
-//     Serial.println(navigation.getMinDistance());
-//     Serial.print("Sensor detail output: ");
-//     Serial.println(printSensorDetails ? "ENABLED" : "DISABLED");
-
-//     Serial.println("--- Sensor Status ---");
-//     for (int i = 0; i < TOF::SENSOR_COUNT; ++i)
-//     {
-//         Serial.print("Sensor ");
-//         Serial.print(i);
-//         Serial.print(": ");
-//         printSensorLine("", i);
-//     }
-
-//     Serial.println("--- Motor Status ---");
-//     Serial.print("FL: Current=");
-//     Serial.print(Encoders::getRotationsFL());
-//     Serial.print(" rotations, Setpoint=");
-//     Serial.print(motorController.getSetpointRotationsFL());
-//     Serial.println(" rotations");
-
-//     Serial.print("FR: Current=");
-//     Serial.print(Encoders::getRotationsFR());
-//     Serial.print(" rotations, Setpoint=");
-//     Serial.print(motorController.getSetpointRotationsFR());
-//     Serial.println(" rotations");
-
-//     Serial.print("BL: Current=");
-//     Serial.print(Encoders::getRotationsBL());
-//     Serial.print(" rotations, Setpoint=");
-//     Serial.print(motorController.getSetpointRotationsBL());
-//     Serial.println(" rotations");
-
-//     Serial.print("BR: Current=");
-//     Serial.print(Encoders::getRotationsBR());
-//     Serial.print(" rotations, Setpoint=");
-//     Serial.print(motorController.getSetpointRotationsBR());
-//     Serial.println(" rotations");
-
-//     Serial.print("PID Gains: Kp=");
-//     Serial.print(motorController.getKp());
-//     Serial.print(", Ki=");
-//     Serial.print(motorController.getKi());
-//     Serial.print(", Kd=");
-//     Serial.println(motorController.getKd());
-//     Serial.println("====================");
-// }
-
-// void printSensorLine(const char *label, int sensorIndex)
-// {
-//     float distance = tofSensors.getFilteredDistanceCM(sensorIndex);
-//     bool timeout = tofSensors.sensorTimeout(sensorIndex) || distance <= 0.0f;
-
-//     Serial.print(label);
-//     if (timeout)
-//     {
-//         Serial.println("TIMEOUT");
-//     }
-//     else
-//     {
-//         Serial.print(distance);
-//         Serial.println(" cm");
-//     }
-// }
