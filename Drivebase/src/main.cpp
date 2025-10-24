@@ -7,58 +7,100 @@
 
 MotorController motorController;
 IMUController imuController;
+
 void processSerialCommand(String command);
 
 void setup() {
     Serial.begin(9600);
 
-    // --- IMU/Nano 33 IoT specifics (from Arduino guidance) ---
-    // Let native USB enumerate so you see startup messages.
     unsigned long _t0 = millis();
-    while (!Serial && (millis() - _t0 < 2000)) { /* wait up to ~2s */ }
+    while (!Serial && (millis() - _t0 < 2000)) { }
 
-    // Ensure I2C is up (IMU is I2C). Safe even if library handles it.
     Wire.begin();
-    // ----------------------------------------------------------
-
+    
     motorController.begin();
 
-    // IMU init (halt on failure as in Arduino examples)
     if (!imuController.begin()) {
-        while (1) { /* Halt execution if IMU fails */ }
+        Serial.println("[ERROR] IMU initialization failed!");
+        while (1);
     }
+    
+    // Silent auto-calibration (no prompts)
+    delay(2000);  // Wait 2 seconds for sensor to stabilize
+    
+    float gx_sum = 0, gy_sum = 0, gz_sum = 0;
+    int samples = 0;
+    
+    // Collect 500 samples silently
+    for (int i = 0; i < 500; i++) {
+        if (IMU.gyroscopeAvailable()) {
+            float gx, gy, gz;
+            IMU.readGyroscope(gx, gy, gz);
+            gx_sum += gx;
+            gy_sum += gy;
+            gz_sum += gz;
+            samples++;
+        }
+        delay(10);
+    }
+    
+    // Apply calibration
+    if (samples > 0) {
+        imuController.setGyroOffsets(gx_sum / samples, gy_sum / samples, gz_sum / samples);
+    }
+    
+    imuController.resetAngles();
+    
+    Serial.println("[SYSTEM] Ready\n");
 }
 
 void loop() {
-    // Keep IMU readings fresh each loop
     imuController.update();
-
+    
     motorController.updateAllPID();
   
-    // Check for serial commands
     if (Serial.available()) {
         String command = Serial.readStringUntil('\n');
         processSerialCommand(command);
     }
   
-    // Print status every 500ms
     static unsigned long last_print = 0;
-    if (millis() - last_print > 500) {
-        // Encoders::printRotations();
-
-        // Print IMU data if initialized, using library units:
-        // Gyro -> deg/s, Accel -> g (per Arduino_LSM6DS3 docs)
+    if (millis() - last_print > 200) {
+        
         if (imuController.isInitialized()) {
-            Serial.print("[IMU] ");
-            imuController.printGyroData();   // deg/s
-            imuController.printAccelData();  // g
+            // OPTION 1: Compact one-line format (default)
+            Serial.print("[IMU] Roll: ");
+            Serial.print(imuController.getRoll(), 1);
+            Serial.print("° Pitch: ");
+            Serial.print(imuController.getPitch(), 1);
+            Serial.print("° Yaw: ");
+            Serial.print(imuController.getYaw(), 1);
+            Serial.print("° | ω: ");
+            Serial.print(imuController.getOmegaX(), 1);
+            Serial.print(",");
+            Serial.print(imuController.getOmegaY(), 1);
+            Serial.print(",");
+            Serial.print(imuController.getOmegaZ(), 1);
+            Serial.print(" dps | α: ");
+            Serial.print(imuController.getAlphaX(), 0);
+            Serial.print(",");
+            Serial.print(imuController.getAlphaY(), 0);
+            Serial.print(",");
+            Serial.print(imuController.getAlphaZ(), 0);
+            Serial.println(" dps²");
+            
+            // OPTION 2: Uncomment for full detailed summary (every 2 seconds)
+            // static unsigned long last_summary = 0;
+            // if (millis() - last_summary > 2000) {
+            //     imuController.printCompleteSummary();
+            //     last_summary = millis();
+            // }
         }
 
         last_print = millis();
     }
 }
 
-// Function to process serial commands
 void processSerialCommand(String command) {
     command.trim();
     
@@ -67,149 +109,179 @@ void processSerialCommand(String command) {
         char secondChar = command.charAt(1);
         
         if (firstChar == 'r') {
-            // Position commands
             float value = command.substring(2).toFloat();
             
             switch (secondChar) {
-                case 'l': {
+                case 'l':
                     motorController.setPositionFL(value);
                     motorController.setPositionBL(value);
-                    Serial.print("Left motors set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("Left motors: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'r': {
+                case 'r':
                     motorController.setPositionFR(value);
                     motorController.setPositionBR(value);
-                    Serial.print("Right motors set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("Right motors: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'a': {
+                case 'a':
                     motorController.setPositionFR(value);
-                    Serial.print("Front Right motor set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("FR motor: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'b': {
+                case 'b':
                     motorController.setPositionBR(value);
-                    Serial.print("Back Right motor set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("BR motor: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'c': {
+                case 'c':
                     motorController.setPositionFL(value);
-                    Serial.print("Front Left motor set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("FL motor: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'd': {
+                case 'd':
                     motorController.setPositionBL(value);
-                    Serial.print("Back Left motor set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations");
+                    Serial.print("BL motor: ");
+                    Serial.println(value);
                     break;
-                }
-                case 'f': {
+                case 'f':
                     motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
                     motorController.setPositionFR(motorController.getSetpointRotationsFR() + value);
                     motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
                     motorController.setPositionBR(motorController.getSetpointRotationsBR() + value);
-                    Serial.print("All motors set to ");
-                    Serial.print(value);
-                    Serial.println(" rotations (forward)");
+                    Serial.print("Forward: ");
+                    Serial.println(value);
                     break;
-                }
-                case 't': {
+                case 't':
                     motorController.setPositionFL(motorController.getSetpointRotationsFL() + value);
                     motorController.setPositionBL(motorController.getSetpointRotationsBL() + value);
                     motorController.setPositionFR(motorController.getSetpointRotationsFR() - value);
                     motorController.setPositionBR(motorController.getSetpointRotationsBR() - value);
-                    Serial.print("Turn command: Left side ");
-                    Serial.print(value);
-                    Serial.print(" rotations, Right side ");
-                    Serial.print(-value);
-                    Serial.println(" rotations");
+                    Serial.print("Turn: ");
+                    Serial.println(value);
                     break;
-                }
-                default: {
-                    Serial.println("Unknown position command");
+                default:
+                    Serial.println("Unknown motor command");
                     break;
-                }
             }
         } else if (firstChar == 'k') {
-            // PID gain commands
             float value = command.substring(2).toFloat();
             
             switch (secondChar) {
-                case 'p': {
+                case 'p':
                     motorController.setKp(value);
-                    Serial.print("Kp set to ");
+                    Serial.print("Kp: ");
                     Serial.println(value);
                     break;
-                }
-                case 'i': {
+                case 'i':
                     motorController.setKi(value);
-                    Serial.print("Ki set to ");
+                    Serial.print("Ki: ");
                     Serial.println(value);
                     break;
-                }
-                case 'd': {
+                case 'd':
                     motorController.setKd(value);
-                    Serial.print("Kd set to ");
+                    Serial.print("Kd: ");
                     Serial.println(value);
                     break;
-                }
-                default: {
-                    Serial.println("Unknown PID gain command (use kp, ki, or kd)");
+                default:
+                    Serial.println("Unknown PID command");
+                    break;
+            }
+        } else if (firstChar == 'i') {
+            switch (secondChar) {
+                case 'r':
+                    imuController.resetAngles();
+                    Serial.println("[IMU] Angles reset");
+                    break;
+                case 'a':
+                    Serial.println("\n=== IMU ANGLES ===");
+                    imuController.printAngles();
+                    Serial.println("==================\n");
+                    break;
+                case 's':
+                    Serial.println("\n=== IMU STATUS ===");
+                    imuController.printStatus();
+                    Serial.println("==================\n");
+                    break;
+                case 'c': {
+                    Serial.println("\n[RECALIBRATION] Keep still for 3 seconds...");
+                    delay(1000);
+                    
+                    float gx_sum_r = 0;
+                    float gy_sum_r = 0;
+                    float gz_sum_r = 0;
+                    int samp_r = 0;
+                    
+                    for (int i = 0; i < 300; i++) {
+                        if (IMU.gyroscopeAvailable()) {
+                            float gxr, gyr, gzr;
+                            IMU.readGyroscope(gxr, gyr, gzr);
+                            gx_sum_r += gxr;
+                            gy_sum_r += gyr;
+                            gz_sum_r += gzr;
+                            samp_r++;
+                        }
+                        delay(10);
+                    }
+                    
+                    if (samp_r > 0) {
+                        float nx = gx_sum_r / samp_r;
+                        float ny = gy_sum_r / samp_r;
+                        float nz = gz_sum_r / samp_r;
+                        
+                        imuController.setGyroOffsets(nx, ny, nz);
+                        Serial.println("[RECALIBRATION] Complete\n");
+                    }
                     break;
                 }
+                default:
+                    Serial.println("IMU: ir ia is ic");
+                    break;
             }
         }
     } else if (command == "x") {
-        // Reset all encoder positions
         Encoders::resetAll();
         motorController.resetPIDVariables();
-        Serial.println("All positions reset to 0");
+        Serial.println("Motors reset");
     } else if (command == "status") {
-        // Print current status
-        Serial.println("=== Current Status ===");
-        Serial.print("FL: Current=");
+        Serial.println("\n=== STATUS ===");
+        Serial.print("FL: ");
         Serial.print(Encoders::getRotationsFL());
-        Serial.print(" rotations, Setpoint=");
-        Serial.print(motorController.getSetpointRotationsFL());
-        Serial.println(" rotations");
-        
-        Serial.print("FR: Current=");
+        Serial.print(" / ");
+        Serial.println(motorController.getSetpointRotationsFL());
+        Serial.print("FR: ");
         Serial.print(Encoders::getRotationsFR());
-        Serial.print(" rotations, Setpoint=");
-        Serial.print(motorController.getSetpointRotationsFR());
-        Serial.println(" rotations");
-        
-        Serial.print("BL: Current=");
+        Serial.print(" / ");
+        Serial.println(motorController.getSetpointRotationsFR());
+        Serial.print("BL: ");
         Serial.print(Encoders::getRotationsBL());
-        Serial.print(" rotations, Setpoint=");
-        Serial.print(motorController.getSetpointRotationsBL());
-        Serial.println(" rotations");
-        
-        Serial.print("BR: Current=");
+        Serial.print(" / ");
+        Serial.println(motorController.getSetpointRotationsBL());
+        Serial.print("BR: ");
         Serial.print(Encoders::getRotationsBR());
-        Serial.print(" rotations, Setpoint=");
-        Serial.print(motorController.getSetpointRotationsBR());
-        Serial.println(" rotations");
+        Serial.print(" / ");
+        Serial.println(motorController.getSetpointRotationsBR());
         
-        Serial.print("PID Gains: Kp=");
+        Serial.print("PID: Kp=");
         Serial.print(motorController.getKp());
-        Serial.print(", Ki=");
+        Serial.print(" Ki=");
         Serial.print(motorController.getKi());
-        Serial.print(", Kd=");
+        Serial.print(" Kd=");
         Serial.println(motorController.getKd());
-    } else {
-        Serial.println("Unknown command");
+        
+        if (imuController.isInitialized()) {
+            imuController.printStatus();
+        }
+        Serial.println("==============\n");
+    } else if (command == "help") {
+        Serial.println("\n=== COMMANDS ===");
+        Serial.println("Motors: rl/rr/ra/rb/rc/rd/rf/rt");
+        Serial.println("PID: kp/ki/kd");
+        Serial.println("IMU: ir ia is ic");
+        Serial.println("Other: x status help");
+        Serial.println("================\n");
+    } else if (command.length() > 0) {
+        Serial.println("Unknown (type 'help')");
     }
 }
+
