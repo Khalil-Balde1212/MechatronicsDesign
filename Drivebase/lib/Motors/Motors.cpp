@@ -1,60 +1,82 @@
 #include "Motors.h"
 
-namespace Motors {
-    Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
-    
-    void initialize() {
-        pwm.begin();
-        pwm.setPWMFreq(400);
-        stopAll();
-    }
-    
-    void setSpeed(int motorPin1, int motorPin2, int speed) {
-        speed = constrain(speed, -4095, 4095);
+// Static PWM driver shared by all motors
+Adafruit_PWMServoDriver* Motor::pwmDriver = nullptr;
+bool Motor::pwmInitialized = false;  // Initialize as false
 
-        if (speed != 0 && abs(speed) < 1000) {
-            speed = (speed > 0) ? 1000 : -1000;
-        }
-        
-        if (speed > 0) {
-            pwm.setPWM(motorPin1, 0, speed);
-            pwm.setPWM(motorPin2, 0, 0);
-        } else if (speed < 0) {
-            pwm.setPWM(motorPin1, 0, 0);
-            pwm.setPWM(motorPin2, 0, -speed);
-        } else {
-            pwm.setPWM(motorPin1, 0, 0);
-            pwm.setPWM(motorPin2, 0, 0);
-        }
-    }
+Motor::Motor(int motorPinA, int motorPinB, Encoder* enc, bool invert) 
+    : pinA(motorPinA), pinB(motorPinB), currentSpeed(0), inverted(invert), controlMode(MANUAL) {
+    speedPID.kp = 10.0;   // Default speed PID gains
+    speedPID.ki = 0.0;
+    speedPID.kd = 0.0;
+    speedPID.tolerance = 0.1;
     
-    void setSpeeds(float left, float right) {
-        left = left * 4096;
-        right = right * 4096;
+    positionPID.kp = 0.0; 
+    positionPID.ki = 0.0;
+    positionPID.kd = 0.0;
+    positionPID.tolerance = 10.0;
 
-        setSpeed(MOTOR_FLA, MOTOR_FLB, left);
-        setSpeed(MOTOR_BLA, MOTOR_BLB, left);
-        setSpeed(MOTOR_FRA, MOTOR_FRB, right);
-        setSpeed(MOTOR_BRA, MOTOR_BRB, right);
-    }
-    
-    void stopAll() {
-        setSpeeds(0, 0);
-    }
-    
-    void setSpeedFL(int speed) {
-        setSpeed(MOTOR_FLA, MOTOR_FLB, speed);
-    }
-    
-    void setSpeedFR(int speed) {
-        setSpeed(MOTOR_FRA, MOTOR_FRB, speed);
-    }
-    
-    void setSpeedBL(int speed) {
-        setSpeed(MOTOR_BLA, MOTOR_BLB, speed);
-    }
-    
-    void setSpeedBR(int speed) {
-        setSpeed(MOTOR_BRA, MOTOR_BRB, speed);
+
+    encoder = enc;
+}
+
+
+
+
+// ========== SPEED CONTROL METHODS ==========
+void Motor::setTargetSpeed(float targetRPS) {
+    speedPID.target = targetRPS;
+    resetPID(speedPID);
+}
+
+void Motor::setSpeedPID(float kp, float ki, float kd) {
+    speedPID.kp = kp;
+    speedPID.ki = ki;
+    speedPID.kd = kd;
+    resetPID(speedPID);
+}
+
+void Motor::setSpeedTolerance(float tolerance) {
+    speedPID.tolerance = tolerance;
+}
+
+void Motor::enableSpeedControl(bool enable) {
+    speedPID.enabled = enable;
+    if (enable) {
+        controlMode = SPEED_CONTROL;
+        resetPID(speedPID);
+        // Disable position control
+        positionPID.enabled = false;
+    } else if (controlMode == SPEED_CONTROL) {
+        controlMode = MANUAL;
     }
 }
+
+// ========== POSITION CONTROL METHODS ==========
+void Motor::setTargetPosition(long targetTicks) {
+    positionPID.target = (float)targetTicks;
+    resetPID(positionPID);
+}
+
+void Motor::setPositionPID(float kp, float ki, float kd) {
+    positionPID.kp = kp;
+    positionPID.ki = ki;
+    positionPID.kd = kd;
+    resetPID(positionPID);
+}
+
+void Motor::setPositionTolerance(float tolerance) {
+    positionPID.tolerance = tolerance;
+}
+
+void Motor::enableRawPositionControl(bool enable) {
+    positionPID.enabled = enable;
+    if (enable) {
+        controlMode = RAW_POSITION_CONTROL;
+        resetPID(positionPID);
+        speedPID.enabled = false;
+    } else if (controlMode == RAW_POSITION_CONTROL) {
+        controlMode = MANUAL;
+    }
+}
+
