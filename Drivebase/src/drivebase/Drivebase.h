@@ -23,6 +23,9 @@ namespace DriveBase {
     // Target speeds for heading-corrected driving
     extern double targetLeftSpeed;
     extern double targetRightSpeed;
+    extern double pivotAngle;
+
+    
 
     void begin();
     void update();
@@ -37,5 +40,7 @@ namespace DriveBase {
     // Position PIDs
     void configurePIDs();
     void resetEncoders();
+
+    void calculateTrajectory(float vx, float vy, float yawRate);
 }
 #endif
