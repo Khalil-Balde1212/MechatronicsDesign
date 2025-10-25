@@ -19,20 +19,13 @@ namespace DriveBase {
     int predictiveHeading = 0;
 
     void begin() {
+        // Initialize motor PWM driver
+        Motor::initializePWM();
         // Initialize all encoders
         encoderFL.begin();
         encoderFR.begin();
         encoderBL.begin();
         encoderBR.begin();
-
-        // Set any necessary inversion
-        encoderBR.setInverted(true);
-        motorBR.setInverted(true);
-
-        encoderFL.setInverted(false);
-        // motorFL.setInverted(true);
-
-        encoderFR.setInverted(true);
 
         // Attach interrupts for all encoders
         attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []()
@@ -44,8 +37,7 @@ namespace DriveBase {
         attachInterrupt(digitalPinToInterrupt(encoderBR.getPinA()), []()
                         { encoderBR.updateCount(); }, CHANGE);
 
-        // Initialize motor PWM driver
-        Motor::initializePWM();
+
 
         // Stop all motors initially
         motorFL.coast();
@@ -60,11 +52,5 @@ namespace DriveBase {
         motorFR.updateControl();
         motorBL.updateControl();
         motorBR.updateControl();
-
-        // Update predictive heading
-        predictiveHeading = 
-            (encoderFL.getRPS() + encoderFR.getRPS())/2 -
-            (encoderBL.getRPS() + encoderBR.getRPS())/2;
-        // predictiveHeading = 
     }
 }
