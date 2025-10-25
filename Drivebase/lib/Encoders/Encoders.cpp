@@ -44,7 +44,6 @@ float Encoder::getRPS() {
     noInterrupts();
     unsigned long currentTime = millis();
     long currentCount = count;
-    interrupts();
 
     float deltaTime = (currentTime - prevTime) / 1000.0f;
     if (deltaTime <= 0.0f) {
@@ -53,9 +52,6 @@ float Encoder::getRPS() {
 
     // Compute RPS based on change since last sample
     float rps = ((currentCount - prevCount) / (float)CPR) / deltaTime;
-
-    // Update previous values for next interval (do atomically)
-    noInterrupts();
     prevCount = currentCount;
     prevTime = currentTime;
     interrupts();
