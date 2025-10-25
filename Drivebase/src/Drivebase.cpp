@@ -5,52 +5,52 @@
 #include <Encoders.h>
 
 namespace DriveBase {
-    // Define the global variables here
-    Encoder encoderFL(RobotMap::ENC_FLA, RobotMap::ENC_FLB);
-    Encoder encoderFR(RobotMap::ENC_FRA, RobotMap::ENC_FRB);
-    Encoder encoderBL(RobotMap::ENC_BLA, RobotMap::ENC_BLB);
-    Encoder encoderBR(RobotMap::ENC_BRA, RobotMap::ENC_BRB);
+    // Tank Drive Motors
+    Encoder encoderLeft(RobotMap::ENC_LEFT_A, RobotMap::ENC_LEFT_B);
+    Encoder encoderRight(RobotMap::ENC_RIGHT_A, RobotMap::ENC_RIGHT_B);
+    Motor motorLeft(RobotMap::MOTOR_LEFT_A, RobotMap::MOTOR_LEFT_B, &encoderLeft);
+    Motor motorRight(RobotMap::MOTOR_RIGHT_A, RobotMap::MOTOR_RIGHT_B, &encoderRight);
 
-    Motor motorFL(RobotMap::MOTOR_FLA, RobotMap::MOTOR_FLB, &encoderFL);
-    Motor motorFR(RobotMap::MOTOR_FRA, RobotMap::MOTOR_FRB, &encoderFR);
-    Motor motorBL(RobotMap::MOTOR_BLA, RobotMap::MOTOR_BLB, &encoderBL);
-    Motor motorBR(RobotMap::MOTOR_BRA, RobotMap::MOTOR_BRB, &encoderBR);
+    // Pivot Motors
+    Encoder encoderPivotFront(RobotMap::ENC_PIVOT_FRONT_A, RobotMap::ENC_PIVOT_FRONT_B);
+    Encoder encoderPivotRear(RobotMap::ENC_PIVOT_REAR_A, RobotMap::ENC_PIVOT_REAR_B);
+    Motor motorPivotFront(RobotMap::MOTOR_PIVOT_FRONT_A, RobotMap::MOTOR_PIVOT_FRONT_B, &encoderPivotFront);
+    Motor motorPivotRear(RobotMap::MOTOR_PIVOT_REAR_A, RobotMap::MOTOR_PIVOT_REAR_B, &encoderPivotRear);
 
     int predictiveHeading = 0;
 
     void begin() {
         // Initialize motor PWM driver
         Motor::initializePWM();
+        
         // Initialize all encoders
-        encoderFL.begin();
-        encoderFR.begin();
-        encoderBL.begin();
-        encoderBR.begin();
+        encoderLeft.begin();
+        encoderRight.begin();
+        encoderPivotFront.begin();
+        encoderPivotRear.begin();
 
         // Attach interrupts for all encoders
-        attachInterrupt(digitalPinToInterrupt(encoderFL.getPinA()), []()
-                        { encoderFL.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderFR.getPinA()), []()
-                        { encoderFR.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderBL.getPinA()), []()
-                        { encoderBL.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderBR.getPinA()), []()
-                        { encoderBR.updateCount(); }, CHANGE);
-
-
+        attachInterrupt(digitalPinToInterrupt(encoderLeft.getPinA()), []()
+                        { encoderLeft.updateCount(); }, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(encoderRight.getPinA()), []()
+                        { encoderRight.updateCount(); }, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(encoderPivotFront.getPinA()), []()
+                        { encoderPivotFront.updateCount(); }, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(encoderPivotRear.getPinA()), []()
+                        { encoderPivotRear.updateCount(); }, CHANGE);
 
         // Stop all motors initially
-        motorFL.coast();
-        motorFR.coast();
-        motorBL.coast();
-        motorBR.coast();
+        motorLeft.coast();
+        motorRight.coast();
+        motorPivotFront.coast();
+        motorPivotRear.coast();
     }
 
     void update() {
         // Update control for all motors
-        motorFL.updateControl();
-        motorFR.updateControl();
-        motorBL.updateControl();
-        motorBR.updateControl();
+        motorLeft.updateControl();
+        motorRight.updateControl();
+        motorPivotFront.updateControl();
+        motorPivotRear.updateControl();
     }
 }

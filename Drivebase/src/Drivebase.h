@@ -5,15 +5,17 @@
 #include "RobotMap.h"
 
 namespace DriveBase {
-    extern Encoder encoderFL;
-    extern Encoder encoderFR;
-    extern Encoder encoderBL;
-    extern Encoder encoderBR;
+    // Tank Drive Motors - Left and Right for forward/backward motion
+    extern Encoder encoderLeft;
+    extern Encoder encoderRight;
+    extern Motor motorLeft;
+    extern Motor motorRight;
 
-    extern Motor motorFL;
-    extern Motor motorFR;
-    extern Motor motorBL;
-    extern Motor motorBR;
+    // Pivot System - Single pivot controlled by two motors
+    extern Encoder encoderPivotFront;
+    extern Encoder encoderPivotRear;
+    extern Motor motorPivotFront;
+    extern Motor motorPivotRear;
 
     void begin();
     void update();
