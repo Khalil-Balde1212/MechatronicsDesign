@@ -17,6 +17,9 @@ namespace DriveBase {
     Motor motorPivotFront(RobotMap::MOTOR_PIVOT_FRONT_A, RobotMap::MOTOR_PIVOT_FRONT_B, &encoderPivotFront);
     Motor motorPivotRear(RobotMap::MOTOR_PIVOT_REAR_A, RobotMap::MOTOR_PIVOT_REAR_B, &encoderPivotRear);
 
+    //Gyro
+    IMUController imu;
+    
     int predictiveHeading = 0;
 
     void begin() {
@@ -52,5 +55,8 @@ namespace DriveBase {
         motorRight.updateControl();
         motorPivotFront.updateControl();
         motorPivotRear.updateControl();
+
+
+        imu.update();
     }
 }

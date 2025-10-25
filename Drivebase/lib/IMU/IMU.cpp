@@ -31,6 +31,28 @@ bool IMUController::begin() {
     
     lastUpdateTime = millis();
     initialized = true;
+
+    float gx_sum = 0, gy_sum = 0, gz_sum = 0;
+    int samples = 0;
+    
+    for (int i = 0; i < 1000; i++) {
+        if (IMU.gyroscopeAvailable()) {
+            float gx, gy, gz;
+            IMU.readGyroscope(gx, gy, gz);
+            gx_sum += gx;
+            gy_sum += gy;
+            gz_sum += gz;
+            samples++;
+        }
+    }
+    
+    // Apply calibration
+    if (samples > 0) {
+        setGyroOffsets(gx_sum / samples, gy_sum / samples, gz_sum / samples);
+    }
+    
+    resetAngles();
+
     return true;
 }
 

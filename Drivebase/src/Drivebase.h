@@ -3,6 +3,7 @@
 #include "Motors.h"
 #include "Encoders.h"
 #include "RobotMap.h"
+#include <IMU.h>
 
 namespace DriveBase {
     // Tank Drive Motors - Left and Right for forward/backward motion
@@ -16,6 +17,8 @@ namespace DriveBase {
     extern Encoder encoderPivotRear;
     extern Motor motorPivotFront;
     extern Motor motorPivotRear;
+
+    extern IMUController imu;
 
     void begin();
     void update();
