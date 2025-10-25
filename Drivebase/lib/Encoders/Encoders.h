@@ -14,7 +14,7 @@ private:
     bool inverted;                   // Flag to invert encoder direction
     float maxRPM = 65.6; // Measured at 5v
     
-    static const int CPR = 2940; //7 * 210:1 per 2x quadrature
+    int CPR = 2940; //7 * 210:1 per 2x quadrature
 
 public:
     Encoder(int encoderPinA, int encoderPinB, bool invert = false);
@@ -39,6 +39,11 @@ public:
     void printStatus();
     int getPinA() const { return pinA; }
     int getPinB() const { return pinB; }
+
+    // Calibration
+    void setMaxRPM(float rpm) { maxRPM = rpm; }
+    void setCPR(int cpr) {CPR = cpr;} 
+    int getCPR() const { return CPR; }
 };
 
 #endif

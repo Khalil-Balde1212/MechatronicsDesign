@@ -20,9 +20,22 @@ namespace DriveBase {
 
     extern IMUController imu;
 
+    // Target speeds for heading-corrected driving
+    extern double targetLeftSpeed;
+    extern double targetRightSpeed;
+
     void begin();
     void update();
+    
+    // Heading PID functions
+    void setHeadingPID(double kp, double ki, double kd);
+    void setTargetHeading(double heading);
+    void enableHeadingPID(bool enable);
+    void resetHeadingPID();
+    double calculateHeadingCorrection();
 
-    extern int predictiveHeading;
+    // Position PIDs
+    void configurePIDs();
+    void resetEncoders();
 }
 #endif

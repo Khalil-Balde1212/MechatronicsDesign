@@ -1,4 +1,4 @@
-#include "Drivebase.h"
+#include "drivebase/Drivebase.h"
 #include "RobotMap.h"
 #include <Arduino.h>
 #include <Motors.h>
@@ -19,18 +19,28 @@ namespace DriveBase {
 
     //Gyro
     IMUController imu;
-    
+
+    // Heading PID variables
+    double headingKp = 0.5, headingKi = 0.0, headingKd = 0.1;
+    double headingSetpoint = 0.0;
+    double headingError = 0.0, headingLastError = 0.0, headingIntegral = 0.0;
+    unsigned long headingLastTime = 0;
+    bool headingPIDEnabled = false;
+
+    // Target speeds
+    double targetLeftSpeed = 0.0;
+    double targetRightSpeed = 0.0;
+
     int predictiveHeading = 0;
 
     void begin() {
-        // Initialize motor PWM driver
-        Motor::initializePWM();
-        
         // Initialize all encoders
         encoderLeft.begin();
         encoderRight.begin();
         encoderPivotFront.begin();
         encoderPivotRear.begin();
+
+        encoderPivotFront.setCPR(6226);
 
         // Attach interrupts for all encoders
         attachInterrupt(digitalPinToInterrupt(encoderLeft.getPinA()), []()
@@ -47,6 +57,16 @@ namespace DriveBase {
         motorRight.coast();
         motorPivotFront.coast();
         motorPivotRear.coast();
+
+        motorLeft.initializePWM();
+
+        // Initialize IMU
+        imu.begin();
+
+        // Initialize heading PID
+        headingLastTime = millis();
+
+        configurePIDs();
     }
 
     void update() {
@@ -55,8 +75,34 @@ namespace DriveBase {
         motorRight.updateControl();
         motorPivotFront.updateControl();
         motorPivotRear.updateControl();
-
-
         imu.update();
+
+        // Apply heading correction if enabled
+        if (headingPIDEnabled) {
+            double correction = calculateHeadingCorrection();
+            // Apply correction to tank drive
+            motorLeft.setSpeed(targetLeftSpeed + correction);
+            motorRight.setSpeed(targetRightSpeed - correction);
+        }
     }
+
+    void resetEncoders() {
+        encoderLeft.reset();
+        encoderRight.reset();
+        encoderPivotFront.reset();
+        encoderPivotRear.reset();
+    }
+
+
+
+
+    void configurePIDs() {
+        // Configure position PID gains for pivot motors
+        motorPivotFront.setPositionPID(10.0, 0.0, 0.1);
+        motorPivotFront.setPositionTolerance(20);
+
+        motorPivotRear.setPositionPID(10.0, 0.0, 0.1);
+        motorPivotRear.setPositionTolerance(20); 
+    }
+
 }
