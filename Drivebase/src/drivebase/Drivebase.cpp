@@ -12,10 +12,10 @@ namespace DriveBase {
     Motor motorRight(RobotMap::MOTOR_RIGHT_A, RobotMap::MOTOR_RIGHT_B, &encoderRight);
 
     // Pivot Motors
-    Encoder encoderPivotRight(RobotMap::ENC_PIVOT_FRONT_A, RobotMap::ENC_PIVOT_FRONT_B);
-    Encoder encoderPivotLeft(RobotMap::ENC_PIVOT_REAR_A, RobotMap::ENC_PIVOT_REAR_B);
-    Motor motorPivotRight(RobotMap::MOTOR_PIVOT_FRONT_A, RobotMap::MOTOR_PIVOT_FRONT_B, &encoderPivotRight);
-    Motor motorPivotLeft(RobotMap::MOTOR_PIVOT_REAR_A, RobotMap::MOTOR_PIVOT_REAR_B, &encoderPivotLeft);
+    Encoder encoderPivotRight(RobotMap::ENC_PIVOT_RIGHT_A, RobotMap::ENC_PIVOT_RIGHT_B);
+    Encoder encoderPivotLeft(RobotMap::ENC_PIVOT_LEFT_A, RobotMap::ENC_PIVOT_LEFT_B);
+    Motor motorPivotRight(RobotMap::MOTOR_PIVOT_RIGHT_A, RobotMap::MOTOR_PIVOT_RIGHT_B, &encoderPivotRight);
+    Motor motorPivotLeft(RobotMap::MOTOR_PIVOT_LEFT_A, RobotMap::MOTOR_PIVOT_LEFT_B, &encoderPivotLeft);
 
     //Gyro
     IMUController imu;
@@ -37,20 +37,27 @@ namespace DriveBase {
         // Initialize all encoders
         encoderLeft.begin();
         encoderRight.begin();
-        encoderPivotRight.begin();
         encoderPivotLeft.begin();
+        encoderPivotRight.begin();
 
-        encoderPivotRight.setCPR(5900);
-        encoderPivotLeft.setCPR(5738);
+        encoderLeft.setCPR(RobotMap::ENC_LEFT_CPR);
+        encoderRight.setCPR(RobotMap::ENC_RIGHT_CPR);
+        encoderPivotLeft.setCPR(RobotMap::ENC_PIVOT_LEFT_CPR);
+        encoderPivotRight.setCPR(RobotMap::ENC_PIVOT_RIGHT_CPR);
+
+        encoderLeft.setInverted(RobotMap::ENC_LEFT_INVERTED);
+        encoderRight.setInverted(RobotMap::ENC_RIGHT_INVERTED);
+        encoderPivotLeft.setInverted(RobotMap::ENC_PIVOT_LEFT_INVERTED);
+        encoderPivotRight.setInverted(RobotMap::ENC_PIVOT_RIGHT_INVERTED);
 
         attachInterrupt(digitalPinToInterrupt(encoderLeft.getPinA()), []()
-                        { encoderLeft.updateCount(); }, CHANGE);
+                        { encoderLeft.updateCount(); }, RISING);
         attachInterrupt(digitalPinToInterrupt(encoderRight.getPinA()), []()
-                        { encoderRight.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderPivotRight.getPinA()), []()
-                        { encoderPivotRight.updateCount(); }, CHANGE);
+                        { encoderRight.updateCount(); }, RISING);
         attachInterrupt(digitalPinToInterrupt(encoderPivotLeft.getPinA()), []()
-                        { encoderPivotLeft.updateCount(); }, CHANGE);
+                        { encoderPivotLeft.updateCount(); }, RISING);
+        attachInterrupt(digitalPinToInterrupt(encoderPivotRight.getPinA()), []()
+                        { encoderPivotRight.updateCount(); }, RISING);
 
         // Stop all motors initially
         motorLeft.coast();
@@ -58,13 +65,6 @@ namespace DriveBase {
         motorPivotRight.coast();
         motorPivotLeft.coast();
 
-        encoderLeft.setInverted(true);
-        encoderRight.setInverted(false);
-
-        encoderPivotRight.setInverted(true);   // Right encoder inverted
-        encoderPivotLeft.setInverted(true);    // Left encoder inverted for consistency
-        motorPivotLeft.setInverted(true);      // Left motor inverted - negative PWM drives reverse
-        motorPivotRight.setInverted(true);     // Right motor inverted - negative PWM drives reverse
 
         // Initialize PWM driver (only needs to be done once for all motors)
         motorLeft.initializePWM();
