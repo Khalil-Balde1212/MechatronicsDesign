@@ -20,9 +20,6 @@ void setup()
 
     // Disable the built-in heading PID to use motor's position control
     DriveBase::enableHeadingPID(false);
-    
-
-
 
         CommandInterpreter::registerCommand({"rawRightSpeed", [](const std::string* args)
             {
@@ -104,9 +101,6 @@ void setup()
             DriveBase::motorPivotRight.coast();
             DriveBase::motorPivotLeft.coast();
             
-            // Small delay to ensure motors stop
-            delay(100);
-            
             // DON'T reset encoders - use absolute positioning from initial calibration
             // DriveBase::encoderPivotRight.reset();
             // DriveBase::encoderPivotLeft.reset();
@@ -145,6 +139,7 @@ void setup()
         },
         "Usage: pp <position_degrees> \n Sets the target position for pivot motors in degrees."
         });
+
 
         CommandInterpreter::registerCommand({"testRight", [](const std::string* args)
         {
@@ -306,14 +301,15 @@ void loop()
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)
     {
-        Serial.print("Left Wheel Encoder: \t");
-        DriveBase::motorLeft.getEncoder()->printStatus();
-        Serial.print("Right Wheel Encoder:\t");
-        DriveBase::motorRight.getEncoder()->printStatus();
-        Serial.print("Right Pivot Encoder:\t");
-        DriveBase::motorPivotRight.getEncoder()->printStatus(); 
-        Serial.print("Left Pivot Encoder:\t");
-        DriveBase::motorPivotLeft.getEncoder()->printStatus();
+        Serial.println(DriveBase::imu.getHeading());
+        // Serial.print("Left Wheel Encoder: \t");
+        // DriveBase::motorLeft.getEncoder()->printStatus();
+        // Serial.print("Right Wheel Encoder:\t");
+        // DriveBase::motorRight.getEncoder()->printStatus();
+        // Serial.print("Right Pivot Encoder:\t");
+        // DriveBase::motorPivotRight.getEncoder()->printStatus(); 
+        // Serial.print("Left Pivot Encoder:\t");
+        // DriveBase::motorPivotLeft.getEncoder()->printStatus();
         
         // // Add PID status for pivot motors
         // Serial.println("=== PIVOT MOTOR PID STATUS ===");
@@ -343,7 +339,7 @@ void loop()
         // Serial.print(", Total Output: ");
         // Serial.println(rearPID.output);
         
-        Serial.println();
+        // Serial.println();
 
         // Serial.print("Left Motor Speed: ");
         // Serial.println(DriveBase::motorLeft.getCurrentSpeed()/4096);
