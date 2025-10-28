@@ -40,7 +40,8 @@ namespace DriveBase {
         encoderPivotFront.begin();
         encoderPivotRear.begin();
 
-        encoderPivotFront.setCPR(6226);
+        encoderPivotFront.setCPR(5800);
+        encoderPivotRear.setCPR(5738);
 
         // Attach interrupts for all encoders
         attachInterrupt(digitalPinToInterrupt(encoderLeft.getPinA()), []()
@@ -57,6 +58,15 @@ namespace DriveBase {
         motorRight.coast();
         motorPivotFront.coast();
         motorPivotRear.coast();
+
+        encoderLeft.setInverted(true);
+        encoderRight.setInverted(false);
+
+        encoderPivotFront.setInverted(true);
+        
+
+        motorPivotRear.setInverted(true);
+        motorPivotFront.setInverted(true);
 
         motorLeft.initializePWM();
 

@@ -1,9 +1,11 @@
-#ifndef DRIVEBASE_H
-#define DRIVEBASE_H
 #include "Motors.h"
 #include "Encoders.h"
 #include "RobotMap.h"
 #include <IMU.h>
+
+#ifndef DRIVEBASE_H
+#define DRIVEBASE_H
+
 
 namespace DriveBase {
     // Tank Drive Motors - Left and Right for forward/backward motion
@@ -25,7 +27,12 @@ namespace DriveBase {
     extern double targetRightSpeed;
     extern double pivotAngle;
 
-    
+    enum DriveMode {
+        RAW_CONTROL, 
+        HEADING_CONTROL
+    };
+
+    static DriveMode driveMode;
 
     void begin();
     void update();
@@ -42,5 +49,19 @@ namespace DriveBase {
     void resetEncoders();
 
     void calculateTrajectory(float vx, float vy, float yawRate);
+
+
+    // raw controls
+    void setRawSpeedLeft(double speed);
+    void setRawSpeedRight(double speed);
+    void setRawSpeedLeftPivot(double speed);
+    void setRawSpeedRightPivot(double speed);
+
+    // position controls
+    void setPositionLeft(long positionTicks);
+    void setPositionRight(long positionTicks);
+    void setPositionLeftPivot(long positionTicks);
+    void setPositionRightPivot(long positionTicks);
 }
+
 #endif
