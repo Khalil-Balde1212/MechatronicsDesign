@@ -11,7 +11,7 @@ Motor::Motor(int motorPinA, int motorPinB, Encoder* enc, bool invert)
     speedPID.kd = 0.0;
     speedPID.tolerance = 0.1;
     
-    positionPID.kp = 0.0; 
+    positionPID.kp = 10.0; 
     positionPID.ki = 0.0;
     positionPID.kd = 0.0;
     positionPID.tolerance = 10.0;

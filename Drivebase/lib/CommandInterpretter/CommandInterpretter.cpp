@@ -9,6 +9,17 @@ namespace CommandInterpreter {
     void begin() {
         commands.clear(); // Use clear() instead of begin() for vector
         Serial.println("Command Interpreter Initialized");
+
+        /*
+        * Example command registration
+        */
+        registerCommand({"ping", [](const std::string* args)
+        {
+            Serial.println("pong");
+        },
+        "Usage: ping ## \n Sends 'pong' response. Optionally specify number of times to respond."
+        });
+
     }
 
     bool registerCommand(const command& cmd) {

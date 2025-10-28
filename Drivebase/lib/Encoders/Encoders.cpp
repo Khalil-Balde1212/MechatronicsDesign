@@ -14,9 +14,7 @@ void Encoder::begin() {
 }
 
 void Encoder::reset() {
-    noInterrupts();
     count = 0;
-    interrupts();
 }
 
 void Encoder::resetRPS() {
@@ -29,9 +27,7 @@ void Encoder::setInverted(bool invert) {
 }
 
 long Encoder::getCount() {
-    noInterrupts();
     long temp = count;
-    interrupts();
     return temp;
 }
 
@@ -41,7 +37,6 @@ float Encoder::getRotations() {
 
 float Encoder::getRPS() {
     // Sample count and time atomically, compute rate over the interval
-    noInterrupts();
     unsigned long currentTime = millis();
     long currentCount = count;
 
@@ -54,7 +49,6 @@ float Encoder::getRPS() {
     float rps = ((currentCount - prevCount) / (float)CPR) / deltaTime;
     prevCount = currentCount;
     prevTime = currentTime;
-    interrupts();
 
     return rps;
 }
