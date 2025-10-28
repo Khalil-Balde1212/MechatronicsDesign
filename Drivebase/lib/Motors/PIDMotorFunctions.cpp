@@ -5,12 +5,27 @@ float Motor::calculatePID(PIDController& pid, float currentValue, bool stopAtTar
     if (!pid.enabled) return 0;
     
     unsigned long currentTime = millis();
-    float deltaTime = (currentTime - pid.lastTime); // Convert to seconds
+    float deltaTime = (currentTime - pid.lastTime) / 1000.0f; // Convert ms to seconds
     
     if (deltaTime <= 0) return pid.output; // Avoid division by zero
     
     pid.error = pid.target - currentValue;
-    
+
+    // --- Stop at target logic ---
+    if (fabs(pid.error) < pid.tolerance) {
+        pid.atTarget = true;
+        if (stopAtTarget) {
+            pid.output = 0;
+            pid.integral = 0;
+            pid.lastError = pid.error;
+            pid.lastTime = currentTime;
+            return pid.output;
+        }
+    } else {
+        pid.atTarget = false;
+    }
+    // --- End stop at target logic ---
+
     // Proportional term
     float P = pid.kp * pid.error;
     

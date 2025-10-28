@@ -92,20 +92,164 @@ void setup()
         "Usage: rp <position_ticks> \n Resets encoders and sets right wheel to target position in ticks."
         });
 
-            CommandInterpreter::registerCommand({"pp", [](const std::string* args)
+        CommandInterpreter::registerCommand({"pp", [](const std::string* args)
         {
             long targetPos = std::stol(*args);
-            DriveBase::motorPivotFront.setTargetPosition(targetPos * DriveBase::motorPivotFront.getEncoder()->getCPR() / 360); // Convert degrees to ticks
-            DriveBase::motorPivotRear.setTargetPosition(targetPos * DriveBase::motorPivotRear.getEncoder()->getCPR() / 360); // Convert degrees to ticks
-            DriveBase::motorPivotFront.enableRawPositionControl(true);
-            DriveBase::motorPivotRear.enableRawPositionControl(true);
-            DriveBase::motorPivotFront.enableSpeedControl(false);
-            DriveBase::motorPivotRear.enableSpeedControl(false);
+            
+            // Stop all motors and disable control first!
+            DriveBase::motorPivotRight.enableRawPositionControl(false);
+            DriveBase::motorPivotLeft.enableRawPositionControl(false);
+            DriveBase::motorPivotRight.enableSpeedControl(false);
+            DriveBase::motorPivotLeft.enableSpeedControl(false);
+            DriveBase::motorPivotRight.coast();
+            DriveBase::motorPivotLeft.coast();
+            
+            // Small delay to ensure motors stop
+            delay(100);
+            
+            // DON'T reset encoders - use absolute positioning from initial calibration
+            // DriveBase::encoderPivotRight.reset();
+            // DriveBase::encoderPivotLeft.reset();
+            
+            long targetTicksRight = targetPos * DriveBase::motorPivotRight.getEncoder()->getCPR() / 360;
+            long targetTicksLeft = targetPos * DriveBase::motorPivotLeft.getEncoder()->getCPR() / 360;
+            
+            // Limit targets based on observed mechanical constraints
+            // Left motor reached 5817 ticks (~362°), right motor limited to ~5728 ticks
+            const long MAX_RIGHT_TICKS = 5728;  // Right motor mechanical limit observed
+            const long MAX_LEFT_TICKS = 5817;   // Left motor actual capability observed
+            
+            if (targetTicksRight > MAX_RIGHT_TICKS) {
+                targetTicksRight = MAX_RIGHT_TICKS;
+                Serial.println("WARNING: Limiting right motor to observed mechanical limit (5728 ticks)");
+            }
+            if (targetTicksLeft > MAX_LEFT_TICKS) {
+                targetTicksLeft = MAX_LEFT_TICKS;
+                Serial.println("WARNING: Limiting left motor to observed mechanical limit (5817 ticks)");
+            }
+            
+            // Debug output
+            Serial.print("Target degrees: "); Serial.println(targetPos);
+            Serial.print("Right CPR: "); Serial.println(DriveBase::motorPivotRight.getEncoder()->getCPR());
+            Serial.print("Left CPR: "); Serial.println(DriveBase::motorPivotLeft.getEncoder()->getCPR());
+            Serial.print("Target ticks right: "); Serial.println(targetTicksRight);
+            Serial.print("Target ticks left: "); Serial.println(targetTicksLeft);
+            Serial.print("Current right position: "); Serial.println(DriveBase::motorPivotRight.getCurrentPosition());
+            Serial.print("Current left position: "); Serial.println(DriveBase::motorPivotLeft.getCurrentPosition());
+            
+            DriveBase::motorPivotRight.setTargetPosition(targetTicksRight);
+            DriveBase::motorPivotLeft.setTargetPosition(targetTicksLeft);
+            DriveBase::motorPivotRight.enableRawPositionControl(true);
+            DriveBase::motorPivotLeft.enableRawPositionControl(true);
             DriveBase::driveMode = DriveBase::DriveMode::HEADING_CONTROL;
-            Serial.print("Set target position to: ");
-            Serial.println(targetPos);
         },
-        "Usage: targetPivPos <position_ticks> \n Sets the target position for pivot motors in degrees."
+        "Usage: pp <position_degrees> \n Sets the target position for pivot motors in degrees."
+        });
+
+        CommandInterpreter::registerCommand({"testRight", [](const std::string* args)
+        {
+            Serial.println("Testing right pivot motor...");
+            DriveBase::motorPivotRight.enableRawPositionControl(false);
+            DriveBase::motorPivotRight.enableSpeedControl(false);
+            DriveBase::motorPivotRight.setSpeed(1500);  // Test speed
+            delay(1000);
+            DriveBase::motorPivotRight.coast();
+            Serial.print("Right encoder count: ");
+            Serial.println(DriveBase::encoderPivotRight.getCount());
+        },
+        "Test right pivot motor and encoder"
+        });
+
+        CommandInterpreter::registerCommand({"testLeft", [](const std::string* args)
+        {
+            Serial.println("Testing left pivot motor...");
+            DriveBase::motorPivotLeft.enableRawPositionControl(false);
+            DriveBase::motorPivotLeft.enableSpeedControl(false);
+            DriveBase::motorPivotLeft.setSpeed(1500);  // Test speed
+            delay(1000);
+            DriveBase::motorPivotLeft.coast();
+            Serial.print("Left encoder count: ");
+            Serial.println(DriveBase::encoderPivotLeft.getCount());
+        },
+        "Test left pivot motor and encoder"
+        });
+
+        CommandInterpreter::registerCommand({"powerTest", [](const std::string* args)
+        {
+            Serial.println("Testing motor power (no PID)...");
+            DriveBase::motorPivotRight.enableRawPositionControl(false);
+            DriveBase::motorPivotLeft.enableRawPositionControl(false);
+            DriveBase::motorPivotRight.enableSpeedControl(false);
+            DriveBase::motorPivotLeft.enableSpeedControl(false);
+            
+            Serial.println("Right motor forward...");
+            DriveBase::motorPivotRight.setSpeed(3000);  // Higher speed
+            delay(2000);
+            DriveBase::motorPivotRight.coast();
+            
+            Serial.println("Left motor forward...");
+            DriveBase::motorPivotLeft.setSpeed(3000);   // Higher speed
+            delay(2000);
+            DriveBase::motorPivotLeft.coast();
+            
+            Serial.println("Right motor reverse...");
+            DriveBase::motorPivotRight.setSpeed(-3000); // Higher speed
+            delay(2000);
+            DriveBase::motorPivotRight.coast();
+            
+            Serial.println("Left motor reverse...");
+            DriveBase::motorPivotLeft.setSpeed(-3000);  // Higher speed
+            delay(2000);
+            DriveBase::motorPivotLeft.coast();
+            
+            Serial.print("Final right encoder: ");
+            Serial.println(DriveBase::encoderPivotRight.getCount());
+            Serial.print("Final left encoder: ");
+            Serial.println(DriveBase::encoderPivotLeft.getCount());
+        },
+        "Test raw motor power without PID control"
+        });
+
+        CommandInterpreter::registerCommand({"speedCompare", [](const std::string* args)
+        {
+            Serial.println("Comparing motor speeds simultaneously...");
+            DriveBase::motorPivotRight.enableRawPositionControl(false);
+            DriveBase::motorPivotLeft.enableRawPositionControl(false);
+            DriveBase::motorPivotRight.enableSpeedControl(false);
+            DriveBase::motorPivotLeft.enableSpeedControl(false);
+            
+            // Reset encoders for consistent starting point
+            DriveBase::encoderPivotRight.reset();
+            DriveBase::encoderPivotLeft.reset();
+            delay(100);
+            
+            Serial.println("Both motors forward at speed 2500...");
+            DriveBase::motorPivotRight.setSpeed(2500);
+            DriveBase::motorPivotLeft.setSpeed(2500);
+            delay(3000);
+            DriveBase::motorPivotRight.coast();
+            DriveBase::motorPivotLeft.coast();
+            
+            Serial.print("Right encoder: ");
+            Serial.println(DriveBase::encoderPivotRight.getCount());
+            Serial.print("Left encoder: ");
+            Serial.println(DriveBase::encoderPivotLeft.getCount());
+            
+            delay(1000);
+            
+            Serial.println("Both motors reverse at speed 2500...");
+            DriveBase::motorPivotRight.setSpeed(-2500);
+            DriveBase::motorPivotLeft.setSpeed(-2500);
+            delay(3000);
+            DriveBase::motorPivotRight.coast();
+            DriveBase::motorPivotLeft.coast();
+            
+            Serial.print("Final right encoder: ");
+            Serial.println(DriveBase::encoderPivotRight.getCount());
+            Serial.print("Final left encoder: ");
+            Serial.println(DriveBase::encoderPivotLeft.getCount());
+        },
+        "Compare both motors running simultaneously at same speed"
         });
 
         CommandInterpreter::registerCommand({"resetEncoders", [](const std::string* args)
@@ -120,11 +264,22 @@ void setup()
         {
             DriveBase::motorLeft.coast();
             DriveBase::motorRight.coast();
-            DriveBase::motorPivotFront.coast();
-            DriveBase::motorPivotRear.coast();
+            DriveBase::motorPivotRight.coast();
+            DriveBase::motorPivotLeft.coast();
             Serial.println("All motors stopped.");
         },
         "Usage: stopAllMotors \n Stops all drivebase motors."
+        });
+
+        CommandInterpreter::registerCommand({"disablePositionControl", [](const std::string* args)
+        {
+            DriveBase::motorPivotRight.enableRawPositionControl(false);
+            DriveBase::motorPivotLeft.enableRawPositionControl(false);
+            DriveBase::motorPivotRight.coast();
+            DriveBase::motorPivotLeft.coast();
+            Serial.println("Position control disabled for pivot motors.");
+        },
+        "Usage: disablePositionControl \n Disables position control and stops pivot motors."
         });
 
 }
@@ -137,6 +292,15 @@ void loop()
     CommandInterpreter::periodic();
     DriveBase::update();  // This calls updateControl() for all motors
     
+    // Safety check: Disable position control when motors reach target to prevent runaway
+    if (DriveBase::motorPivotRight.isPositionAtTarget()) {
+        DriveBase::motorPivotRight.enableRawPositionControl(false);
+        DriveBase::motorPivotRight.coast();
+    }
+    if (DriveBase::motorPivotLeft.isPositionAtTarget()) {
+        DriveBase::motorPivotLeft.enableRawPositionControl(false);
+        DriveBase::motorPivotLeft.coast();
+    }
     
     unsigned long currentTime = millis();
     // Print status every 500ms
@@ -146,10 +310,39 @@ void loop()
         DriveBase::motorLeft.getEncoder()->printStatus();
         Serial.print("Right Wheel Encoder:\t");
         DriveBase::motorRight.getEncoder()->printStatus();
-        Serial.print("Front Pivot Encoder:\t");
-        DriveBase::motorPivotFront.getEncoder()->printStatus(); 
-        Serial.print("Rear Pivot Encoder:\t");
-        DriveBase::motorPivotRear.getEncoder()->printStatus();
+        Serial.print("Right Pivot Encoder:\t");
+        DriveBase::motorPivotRight.getEncoder()->printStatus(); 
+        Serial.print("Left Pivot Encoder:\t");
+        DriveBase::motorPivotLeft.getEncoder()->printStatus();
+        
+        // // Add PID status for pivot motors
+        // Serial.println("=== PIVOT MOTOR PID STATUS ===");
+        // DriveBase::motorPivotFront.printPIDStatus();
+        // DriveBase::motorPivotRear.printPIDStatus();
+        // Serial.println("==============================");
+        
+        // // Debug PID components for front motor
+        // auto& frontPID = DriveBase::motorPivotFront.getPositionPID();
+        // Serial.print("Front PID - P: ");
+        // Serial.print(frontPID.kp * frontPID.error);
+        // Serial.print(", I: ");
+        // Serial.print(frontPID.ki * frontPID.integral);
+        // Serial.print(", D: ");
+        // Serial.print(frontPID.kd * ((frontPID.error - frontPID.lastError) / 0.5));
+        // Serial.print(", Total Output: ");
+        // Serial.println(frontPID.output);
+        
+        // // Debug PID components for rear motor
+        // auto& rearPID = DriveBase::motorPivotRear.getPositionPID();
+        // Serial.print("Rear PID - P: ");
+        // Serial.print(rearPID.kp * rearPID.error);
+        // Serial.print(", I: ");
+        // Serial.print(rearPID.ki * rearPID.integral);
+        // Serial.print(", D: ");
+        // Serial.print(rearPID.kd * ((rearPID.error - rearPID.lastError) / 0.5));
+        // Serial.print(", Total Output: ");
+        // Serial.println(rearPID.output);
+        
         Serial.println();
 
         // Serial.print("Left Motor Speed: ");
@@ -161,8 +354,8 @@ void loop()
         // Serial.print("Rear Pivot Motor Speed: ");
         // Serial.println(DriveBase::motorPivotRear.getCurrentSpeed()/4096);
 
-        Serial.print(DriveBase::imu.getHeading());
-        Serial.println(" deg");
+        // Serial.print(DriveBase::imu.getHeading());
+        // Serial.println(" deg");
         
         lastPrintTime = currentTime;
     }

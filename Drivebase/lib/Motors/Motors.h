@@ -84,6 +84,7 @@ public:
     const char* getControlMode() const;
     Encoder* getEncoder() const { return encoder; }
     long getCurrentPosition() const { return encoder->getCount(); }
+    const PIDController& getPositionPID() const { return positionPID; }
 
     void printStatus();
     void printPIDStatus();

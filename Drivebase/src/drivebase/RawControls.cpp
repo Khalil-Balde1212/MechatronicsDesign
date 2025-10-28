@@ -19,16 +19,16 @@ namespace DriveBase
 
     void setRawSpeedLeftPivot(double speed) {
         driveMode = DriveMode::RAW_CONTROL;
-        motorPivotFront.enableRawPositionControl(false);
-        motorPivotFront.enableSpeedControl(false);
-        motorPivotFront.setSpeed(std::ceil(speed*4095));
+        motorPivotLeft.enableRawPositionControl(false);
+        motorPivotLeft.enableSpeedControl(false);
+        motorPivotLeft.setSpeed(std::ceil(speed*4095));
     }
 
     void setRawSpeedRightPivot(double speed) {
         driveMode = DriveMode::RAW_CONTROL;
-        motorPivotRear.enableRawPositionControl(false);
-        motorPivotRear.enableSpeedControl(false);
-        motorPivotRear.setSpeed(std::ceil(speed*4095));
+        motorPivotRight.enableRawPositionControl(false);
+        motorPivotRight.enableSpeedControl(false);
+        motorPivotRight.setSpeed(std::ceil(speed*4095));
     }
 
 
@@ -51,15 +51,15 @@ namespace DriveBase
 
     void setPositionLeftPivot(long positionTicks) {
         driveMode = DriveMode::HEADING_CONTROL;
-        motorPivotFront.enableSpeedControl(false);
-        motorPivotFront.enableRawPositionControl(true);
-        motorPivotFront.setTargetPosition(positionTicks);
+        motorPivotLeft.enableSpeedControl(false);
+        motorPivotLeft.enableRawPositionControl(true);
+        motorPivotLeft.setTargetPosition(positionTicks);
     }
 
     void setPositionRightPivot(long positionTicks) {
         driveMode = DriveMode::HEADING_CONTROL;
-        motorPivotRear.enableSpeedControl(false);
-        motorPivotRear.enableRawPositionControl(true);
-        motorPivotRear.setTargetPosition(positionTicks);
+        motorPivotRight.enableSpeedControl(false);
+        motorPivotRight.enableRawPositionControl(true);
+        motorPivotRight.setTargetPosition(positionTicks);
     }
 }

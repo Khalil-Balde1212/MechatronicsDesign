@@ -12,10 +12,10 @@ namespace DriveBase {
     Motor motorRight(RobotMap::MOTOR_RIGHT_A, RobotMap::MOTOR_RIGHT_B, &encoderRight);
 
     // Pivot Motors
-    Encoder encoderPivotFront(RobotMap::ENC_PIVOT_FRONT_A, RobotMap::ENC_PIVOT_FRONT_B);
-    Encoder encoderPivotRear(RobotMap::ENC_PIVOT_REAR_A, RobotMap::ENC_PIVOT_REAR_B);
-    Motor motorPivotFront(RobotMap::MOTOR_PIVOT_FRONT_A, RobotMap::MOTOR_PIVOT_FRONT_B, &encoderPivotFront);
-    Motor motorPivotRear(RobotMap::MOTOR_PIVOT_REAR_A, RobotMap::MOTOR_PIVOT_REAR_B, &encoderPivotRear);
+    Encoder encoderPivotRight(RobotMap::ENC_PIVOT_FRONT_A, RobotMap::ENC_PIVOT_FRONT_B);
+    Encoder encoderPivotLeft(RobotMap::ENC_PIVOT_REAR_A, RobotMap::ENC_PIVOT_REAR_B);
+    Motor motorPivotRight(RobotMap::MOTOR_PIVOT_FRONT_A, RobotMap::MOTOR_PIVOT_FRONT_B, &encoderPivotRight);
+    Motor motorPivotLeft(RobotMap::MOTOR_PIVOT_REAR_A, RobotMap::MOTOR_PIVOT_REAR_B, &encoderPivotLeft);
 
     //Gyro
     IMUController imu;
@@ -37,41 +37,43 @@ namespace DriveBase {
         // Initialize all encoders
         encoderLeft.begin();
         encoderRight.begin();
-        encoderPivotFront.begin();
-        encoderPivotRear.begin();
+        encoderPivotRight.begin();
+        encoderPivotLeft.begin();
 
-        encoderPivotFront.setCPR(5800);
-        encoderPivotRear.setCPR(5738);
+        encoderPivotRight.setCPR(5900);
+        encoderPivotLeft.setCPR(5738);
 
-        // Attach interrupts for all encoders
         attachInterrupt(digitalPinToInterrupt(encoderLeft.getPinA()), []()
                         { encoderLeft.updateCount(); }, CHANGE);
         attachInterrupt(digitalPinToInterrupt(encoderRight.getPinA()), []()
                         { encoderRight.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderPivotFront.getPinA()), []()
-                        { encoderPivotFront.updateCount(); }, CHANGE);
-        attachInterrupt(digitalPinToInterrupt(encoderPivotRear.getPinA()), []()
-                        { encoderPivotRear.updateCount(); }, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(encoderPivotRight.getPinA()), []()
+                        { encoderPivotRight.updateCount(); }, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(encoderPivotLeft.getPinA()), []()
+                        { encoderPivotLeft.updateCount(); }, CHANGE);
 
         // Stop all motors initially
         motorLeft.coast();
         motorRight.coast();
-        motorPivotFront.coast();
-        motorPivotRear.coast();
+        motorPivotRight.coast();
+        motorPivotLeft.coast();
 
         encoderLeft.setInverted(true);
         encoderRight.setInverted(false);
 
-        encoderPivotFront.setInverted(true);
-        
+        encoderPivotRight.setInverted(true);   // Right encoder inverted
+        encoderPivotLeft.setInverted(true);    // Left encoder inverted for consistency
+        motorPivotLeft.setInverted(true);      // Left motor inverted - negative PWM drives reverse
+        motorPivotRight.setInverted(true);     // Right motor inverted - negative PWM drives reverse
 
-        motorPivotRear.setInverted(true);
-        motorPivotFront.setInverted(true);
-
+        // Initialize PWM driver (only needs to be done once for all motors)
         motorLeft.initializePWM();
 
         // Initialize IMU
         imu.begin();
+
+        // Reset encoders to 0 (assuming motors start at 0 degree position)
+        resetEncoders();
 
         // Initialize heading PID
         headingLastTime = millis();
@@ -83,8 +85,8 @@ namespace DriveBase {
         // Update control for all motors
         motorLeft.updateControl();
         motorRight.updateControl();
-        motorPivotFront.updateControl();
-        motorPivotRear.updateControl();
+        motorPivotRight.updateControl();
+        motorPivotLeft.updateControl();
         imu.update();
 
         // Apply heading correction if enabled
@@ -99,20 +101,20 @@ namespace DriveBase {
     void resetEncoders() {
         encoderLeft.reset();
         encoderRight.reset();
-        encoderPivotFront.reset();
-        encoderPivotRear.reset();
+        encoderPivotRight.reset();
+        encoderPivotLeft.reset();
     }
 
 
 
 
     void configurePIDs() {
-        // Configure position PID gains for pivot motors
-        motorPivotFront.setPositionPID(10.0, 0.0, 0.1);
-        motorPivotFront.setPositionTolerance(20);
+        // Configure position PID gains for pivot motors - conservative tuning to reduce oscillation
+        motorPivotRight.setPositionPID(3.0, 0.0, 0.0);  // Conservative gains for right motor (higher resistance)
+        motorPivotRight.setPositionTolerance(100);         // Relaxed tolerance for reliable stopping
 
-        motorPivotRear.setPositionPID(10.0, 0.0, 0.1);
-        motorPivotRear.setPositionTolerance(20); 
+        motorPivotLeft.setPositionPID(2.0, 0.0, 0.0);  // Conservative gains for left motor (more power)
+        motorPivotLeft.setPositionTolerance(100);          // Relaxed tolerance for reliable stopping
     }
 
 }

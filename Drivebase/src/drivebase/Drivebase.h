@@ -15,10 +15,10 @@ namespace DriveBase {
     extern Motor motorRight;
 
     // Pivot System - Single pivot controlled by two motors
-    extern Encoder encoderPivotFront;
-    extern Encoder encoderPivotRear;
-    extern Motor motorPivotFront;
-    extern Motor motorPivotRear;
+    extern Encoder encoderPivotRight;
+    extern Encoder encoderPivotLeft;
+    extern Motor motorPivotRight;
+    extern Motor motorPivotLeft;
 
     extern IMUController imu;
 
