@@ -277,6 +277,37 @@ void setup()
         "Usage: disablePositionControl \n Disables position control and stops pivot motors."
         });
 
+
+        CommandInterpreter::registerCommand({"openClaw", [](const std::string* args)
+        {
+            Motor::pwmDriver->setPWM(RobotMap::CLAW_SERVO_PIN, 0, 400);  // Example value to open claw
+        },
+        "Usage: openClaw \n Opens the claw mechanism."
+        });
+
+        CommandInterpreter::registerCommand({"closeClaw", [](const std::string* args)
+        {
+            Motor::pwmDriver->setPWM(RobotMap::CLAW_SERVO_PIN, 0, 150);  // Example value to close claw
+        },
+        "Usage: closeClaw \n Closes the claw mechanism."
+        });
+
+        CommandInterpreter::registerCommand({"lowerClaw", [](const std::string* args)
+        {
+            Motor::pwmDriver->setPWM(RobotMap::ARM_SERVO_PIN, 0, 300);  // Example value to lower arm
+        },
+        "Usage: lowerClaw \n Lowers the arm mechanism."
+        });
+
+        CommandInterpreter::registerCommand({"raiseClaw", [](const std::string* args)
+        {
+            Motor::pwmDriver->setPWM(RobotMap::ARM_SERVO_PIN, 0, 100);  // Example value to raise arm
+        },
+        "Usage: raiseClaw \n Raises the arm mechanism."
+        });
+
+
+
 }
 
 static unsigned long lastPrintTime = 0;

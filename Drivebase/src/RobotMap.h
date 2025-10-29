@@ -59,5 +59,12 @@ namespace RobotMap
 
     const float MAXIMUM_WHEEL_RPS = 2.0;
     const float MAXIMUM_VELOCITY = MAXIMUM_WHEEL_RPS * WHEEL_RADIUS_MM * 2 * PI / 1000.0; // in m/s
+
+
+
+
+    const int ARM1_SERVO_PIN = 12;
+    const int ARM2_SERVO_PIN = 13;
+    const int CLAW_SERVO_PIN = 14;
 }
 #endif

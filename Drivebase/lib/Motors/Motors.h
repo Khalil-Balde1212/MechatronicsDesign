@@ -29,7 +29,6 @@ private:
     int pinB;
     int currentSpeed;
     bool inverted;
-    static Adafruit_PWMServoDriver* pwmDriver;
     static bool pwmInitialized;  // Track if PWM driver is initialized
 
     Encoder *encoder;
@@ -42,6 +41,7 @@ private:
     void resetPID(PIDController& pid);
     
 public:
+    static Adafruit_PWMServoDriver* pwmDriver;
     // PID Controllers
     PIDController speedPID;
     PIDController positionPID;
