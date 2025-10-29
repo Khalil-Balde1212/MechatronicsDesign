@@ -317,14 +317,14 @@ void loop()
     DriveBase::update();  // This calls updateControl() for all motors
     
     // Safety check: Disable position control when motors reach target to prevent runaway
-    if (DriveBase::motorPivotRight.isPositionAtTarget()) {
-        DriveBase::motorPivotRight.enableRawPositionControl(false);
-        DriveBase::motorPivotRight.coast();
-    }
-    if (DriveBase::motorPivotLeft.isPositionAtTarget()) {
-        DriveBase::motorPivotLeft.enableRawPositionControl(false);
-        DriveBase::motorPivotLeft.coast();
-    }
+    // if (DriveBase::motorPivotRight.isPositionAtTarget()) {
+    //     DriveBase::motorPivotRight.enableRawPositionControl(false);
+    //     DriveBase::motorPivotRight.coast();
+    // }
+    // if (DriveBase::motorPivotLeft.isPositionAtTarget()) {
+    //     DriveBase::motorPivotLeft.enableRawPositionControl(false);
+    //     DriveBase::motorPivotLeft.coast();
+    // }
     
     unsigned long currentTime = millis();
     // Print status every 500ms
