@@ -287,6 +287,15 @@ void setup()
                                              Serial.println("Position control disabled for pivot motors.");
                                          },
                                          "Usage: disablePositionControl \n Disables position control and stops pivot motors."});
+
+    CommandInterpreter::registerCommand({"moveForwards", [](const std::string *args)
+                                         {
+                                             DriveBase::motorPivotRight.enableRawPositionControl(false);
+                                             DriveBase::motorPivotLeft.enableRawPositionControl(false);
+                                             DriveBase::motorPivotRight.coast();
+                                             DriveBase::motorPivotLeft.coast();
+                                             Serial.println("Position control disabled for pivot motors.");
+                                         }, "Usage: moveForwards \n Moves the robot forwards."});
 }
 
 static unsigned long lastPrintTime = 0;
