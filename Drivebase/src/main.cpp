@@ -295,6 +295,17 @@ void setup() {
                                              DriveBase::motorRight.coast();
                                              DriveBase::motorPivotRight.coast();
                                              DriveBase::motorPivotLeft.coast();
+                                             
+                                             DriveBase::motorLeft.enableRawPositionControl(false);
+                                             DriveBase::motorRight.enableRawPositionControl(false);
+                                             DriveBase::motorLeft.enableSpeedControl(false);
+                                                DriveBase::motorRight.enableSpeedControl(false);
+
+                                             DriveBase::motorPivotRight.enableRawPositionControl(false);
+                                             DriveBase::motorPivotLeft.enableRawPositionControl(false);
+                                             DriveBase::motorPivotRight.enableSpeedControl(false);
+                                             DriveBase::motorPivotLeft.enableSpeedControl(false);
+                                             
                                              Serial.println("All motors stopped.");
                                          },
                                          "Usage: stopAllMotors \n Stops all drivebase motors."});
@@ -331,13 +342,20 @@ void loop() {
     if (cmd_received) {
         float headingError = DriveBase::imu.getHeading() - cmd_yaw;
         float correction = headingError / 180.0f * 4095 * 15;
+        correction = constrain(correction, -800, 800);
 
-        DriveBase::motorLeft.setSpeed(4096 + correction);
-        DriveBase::motorRight.setSpeed(4096 - correction);
+        float speed_mag = sqrt(cmd_vx * cmd_vx + cmd_vy * cmd_vy);  // expected range: 0 to 1
+        float scaled_speed = 4095 + speed_mag * 1000;  // scale to match your system
+
+        DriveBase::motorLeft.setSpeed(scaled_speed + correction);
+        DriveBase::motorRight.setSpeed(scaled_speed - correction);
 
         float angle = atan2(cmd_vy, cmd_vx) * 180.0f / PI;
-        DriveBase::motorPivotLeft.setTargetPosition(angle);
-        DriveBase::motorPivotRight.setTargetPosition(angle);
+        long targetTicksRight = angle * DriveBase::motorPivotRight.getEncoder()->getCPR() / 360;
+        long targetTicksLeft = angle * DriveBase::motorPivotLeft.getEncoder()->getCPR() / 360;
+
+        DriveBase::motorPivotLeft.setTargetPosition(targetTicksLeft);
+        DriveBase::motorPivotRight.setTargetPosition(targetTicksRight);
     }
 
     unsigned long now = millis();
