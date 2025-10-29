@@ -20,9 +20,6 @@ void setup()
 
     // Disable the built-in heading PID to use motor's position control
     DriveBase::enableHeadingPID(false);
-    
-
-
 
         CommandInterpreter::registerCommand({"rawRightSpeed", [](const std::string* args)
             {
@@ -104,9 +101,6 @@ void setup()
             DriveBase::motorPivotRight.coast();
             DriveBase::motorPivotLeft.coast();
             
-            // Small delay to ensure motors stop
-            delay(100);
-            
             // DON'T reset encoders - use absolute positioning from initial calibration
             // DriveBase::encoderPivotRight.reset();
             // DriveBase::encoderPivotLeft.reset();
@@ -145,6 +139,7 @@ void setup()
         },
         "Usage: pp <position_degrees> \n Sets the target position for pivot motors in degrees."
         });
+
 
         CommandInterpreter::registerCommand({"testRight", [](const std::string* args)
         {
@@ -291,6 +286,25 @@ void loop()
     // Update motor control (this runs the PID for ALL motors)
     CommandInterpreter::periodic();
     DriveBase::update();  // This calls updateControl() for all motors
+
+    float targetHeading = 0.0f;
+    float targetyvel = 10.0f;
+    float targetxvel = 0.0f;
+
+
+    // Both motors start at high speed (4096)
+    // As the robot veers away from targetHeading, reduce speed of one side to correct
+    float headingError = DriveBase::imu.getHeading() - targetHeading;
+    float correction = headingError / 180.0f * 4095 * 15; // scale correction
+
+    DriveBase::motorLeft.setSpeed(4096 + correction);   // Reduce left if error positive
+    DriveBase::motorRight.setSpeed(4096 - correction);  // Reduce right if error negative
+
+    // Calculate angle between target x and y velocity
+    float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
+    DriveBase::motorPivotLeft.setTargetPosition(angle);
+    DriveBase::motorPivotRight.setTargetPosition(angle);
+
     
     // Safety check: Disable position control when motors reach target to prevent runaway
     if (DriveBase::motorPivotRight.isPositionAtTarget()) {
@@ -306,14 +320,15 @@ void loop()
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)
     {
-        Serial.print("Left Wheel Encoder: \t");
-        DriveBase::motorLeft.getEncoder()->printStatus();
-        Serial.print("Right Wheel Encoder:\t");
-        DriveBase::motorRight.getEncoder()->printStatus();
-        Serial.print("Right Pivot Encoder:\t");
-        DriveBase::motorPivotRight.getEncoder()->printStatus(); 
-        Serial.print("Left Pivot Encoder:\t");
-        DriveBase::motorPivotLeft.getEncoder()->printStatus();
+        Serial.println(DriveBase::imu.getHeading());
+        // Serial.print("Left Wheel Encoder: \t");
+        // DriveBase::motorLeft.getEncoder()->printStatus();
+        // Serial.print("Right Wheel Encoder:\t");
+        // DriveBase::motorRight.getEncoder()->printStatus();
+        // Serial.print("Right Pivot Encoder:\t");
+        // DriveBase::motorPivotRight.getEncoder()->printStatus(); 
+        // Serial.print("Left Pivot Encoder:\t");
+        // DriveBase::motorPivotLeft.getEncoder()->printStatus();
         
         // // Add PID status for pivot motors
         // Serial.println("=== PIVOT MOTOR PID STATUS ===");
@@ -343,7 +358,7 @@ void loop()
         // Serial.print(", Total Output: ");
         // Serial.println(rearPID.output);
         
-        Serial.println();
+        // Serial.println();
 
         // Serial.print("Left Motor Speed: ");
         // Serial.println(DriveBase::motorLeft.getCurrentSpeed()/4096);
