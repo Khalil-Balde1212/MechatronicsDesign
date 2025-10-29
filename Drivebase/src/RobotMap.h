@@ -2,7 +2,7 @@
 #define ROBOTMAP_H
 
 #include <vector>
-
+#include <tof_cameras.h>
 namespace RobotMap
 {
     // Tank Drive Configuration
@@ -59,5 +59,10 @@ namespace RobotMap
 
     const float MAXIMUM_WHEEL_RPS = 2.0;
     const float MAXIMUM_VELOCITY = MAXIMUM_WHEEL_RPS * WHEEL_RADIUS_MM * 2 * PI / 1000.0; // in m/s
+
+
+    const int TOF_XSHUT_PINS[TOF::SENSOR_COUNT] = {5, 6, 12};
+    const uint8_t TOF_ADDRESSES[TOF::SENSOR_COUNT] = {0x30, 0x31, 0x32};
+
 }
 #endif
