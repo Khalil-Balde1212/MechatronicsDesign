@@ -3,41 +3,62 @@
 #include <SPI.h>
 #include "Encoders.h"
 #include "IMU.h"
-
 #include "CommandInterpretter.h"
 #include "RobotMap.h"
 #include <Motors.h>
-
 #include "drivebase/Drivebase.h"
-
 #include <tof_cameras.h>
 
-// Pin Definitions for TOF Sensors
 
 TOF::TOFSensors tofSensors;
 
-void setup()
-{
-    Serial.begin(9600);
+
+unsigned long lastIMUPublish = 0;
+unsigned long lastEncoderPublish = 0;
+unsigned long lastTOFPublish = 0;
+
+
+const unsigned long IMU_INTERVAL = 10;
+const unsigned long ENCODER_INTERVAL = 20;
+const unsigned long TOF_INTERVAL = 100;
+
+String serialCmd = "";
+float cmd_vx = 0.0f;
+float cmd_vy = 0.0f;
+float cmd_yaw = 0.0f;
+bool cmd_received = false;
+
+
+void parseIncomingCommand(const String& line) {
+    // Expected: {"cmd":[vx, vy, yaw]}
+    int start = line.indexOf("[");
+    int mid1 = line.indexOf(",", start);
+    int mid2 = line.indexOf(",", mid1 + 1);
+    int end = line.indexOf("]", mid2);
+
+    if (start >= 0 && mid1 > start && mid2 > mid1 && end > mid2) {
+        cmd_vx = line.substring(start + 1, mid1).toFloat();
+        cmd_vy = line.substring(mid1 + 1, mid2).toFloat();
+        cmd_yaw = line.substring(mid2 + 1, end).toFloat();
+        cmd_received = true;
+        Serial.println("{\"ack\":true}");
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
     Wire.begin();
 
-    if (!tofSensors.initialize(RobotMap::TOF_XSHUT_PINS, RobotMap::TOF_ADDRESSES, A4, A5))
-    {
-        Serial.println("Failed to configure TOF sensors");
-    }
-    else if (!tofSensors.begin())
-    {
-        Serial.println("TOF sensor initialization encountered errors");
-    }
-    else
-    {
-        Serial.println("TOF sensors initialized successfully");
+    if (!tofSensors.initialize(RobotMap::TOF_XSHUT_PINS, RobotMap::TOF_ADDRESSES, A4, A5)) {
+        Serial.println("{\"error\":\"Failed to configure TOF sensors\"}");
+    } else if (!tofSensors.begin()) {
+        Serial.println("{\"error\":\"TOF sensor initialization encountered errors\"}");
+    } else {
+        Serial.println("{\"status\":\"TOF sensors initialized successfully\"}");
     }
 
     CommandInterpreter::begin();
     DriveBase::begin();
-
-    // Disable the built-in heading PID to use motor's position control
     DriveBase::enableHeadingPID(false);
 
     CommandInterpreter::registerCommand({"rawRightSpeed", [](const std::string *args)
@@ -291,114 +312,61 @@ void setup()
 
 static unsigned long lastPrintTime = 0;
 
-void loop()
-{
-    // Update motor control (this runs the PID for ALL motors)
+void loop() {
     CommandInterpreter::periodic();
-    DriveBase::update(); // This calls updateControl() for all motors
+    DriveBase::update();
 
-    float targetHeading = 0.0f;
-    float targetyvel = 10.0f;
-    float targetxvel = 0.0f;
-
-    // Both motors start at high speed (4096)
-    // As the robot veers away from targetHeading, reduce speed of one side to correct
-    float headingError = DriveBase::imu.getHeading() - targetHeading;
-    float correction = headingError / 180.0f * 4095 * 15; // scale correction
-
-    DriveBase::motorLeft.setSpeed(4096 + correction);  // Reduce left if error positive
-    DriveBase::motorRight.setSpeed(4096 - correction); // Reduce right if error negative
-
-    // Calculate angle between target x and y velocity
-    float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
-    DriveBase::motorPivotLeft.setTargetPosition(angle);
-    DriveBase::motorPivotRight.setTargetPosition(angle);
-
-    // Safety check: Disable position control when motors reach target to prevent runaway
-    if (DriveBase::motorPivotRight.isPositionAtTarget())
-    {
-        DriveBase::motorPivotRight.enableRawPositionControl(false);
-        DriveBase::motorPivotRight.coast();
-    }
-    if (DriveBase::motorPivotLeft.isPositionAtTarget())
-    {
-        DriveBase::motorPivotLeft.enableRawPositionControl(false);
-        DriveBase::motorPivotLeft.coast();
+    // ROS2 COMMAND INPUT (non-blocking)
+    while (Serial.available()) {
+        char c = Serial.read();
+        if (c == '\n') {
+            parseIncomingCommand(serialCmd);
+            serialCmd = "";
+        } else {
+            serialCmd += c;
+        }
     }
 
-    unsigned long currentTime = millis();
-    // Print status every 500ms
-    if (currentTime - lastPrintTime >= 500)
-    {
-        // Serial.println(DriveBase::imu.getHeading());
-        // Serial.print("Left Wheel Encoder: \t");
-        // DriveBase::motorLeft.getEncoder()->printStatus();
-        // Serial.print("Right Wheel Encoder:\t");
-        // DriveBase::motorRight.getEncoder()->printStatus();
-        // Serial.print("Right Pivot Encoder:\t");
-        // DriveBase::motorPivotRight.getEncoder()->printStatus();
-        // Serial.print("Left Pivot Encoder:\t");
-        // DriveBase::motorPivotLeft.getEncoder()->printStatus();
+    // APPLY ROS2 COMMAND IF AVAILABLE
+    if (cmd_received) {
+        float headingError = DriveBase::imu.getHeading() - cmd_yaw;
+        float correction = headingError / 180.0f * 4095 * 15;
 
-        // // Add PID status for pivot motors
-        // Serial.println("=== PIVOT MOTOR PID STATUS ===");
-        // DriveBase::motorPivotFront.printPIDStatus();
-        // DriveBase::motorPivotRear.printPIDStatus();
-        // Serial.println("==============================");
+        DriveBase::motorLeft.setSpeed(4096 + correction);
+        DriveBase::motorRight.setSpeed(4096 - correction);
 
-        // // Debug PID components for front motor
-        // auto& frontPID = DriveBase::motorPivotFront.getPositionPID();
-        // Serial.print("Front PID - P: ");
-        // Serial.print(frontPID.kp * frontPID.error);
-        // Serial.print(", I: ");
-        // Serial.print(frontPID.ki * frontPID.integral);
-        // Serial.print(", D: ");
-        // Serial.print(frontPID.kd * ((frontPID.error - frontPID.lastError) / 0.5));
-        // Serial.print(", Total Output: ");
-        // Serial.println(frontPID.output);
+        float angle = atan2(cmd_vy, cmd_vx) * 180.0f / PI;
+        DriveBase::motorPivotLeft.setTargetPosition(angle);
+        DriveBase::motorPivotRight.setTargetPosition(angle);
+    }
 
-        // // Debug PID components for rear motor
-        // auto& rearPID = DriveBase::motorPivotRear.getPositionPID();
-        // Serial.print("Rear PID - P: ");
-        // Serial.print(rearPID.kp * rearPID.error);
-        // Serial.print(", I: ");
-        // Serial.print(rearPID.ki * rearPID.integral);
-        // Serial.print(", D: ");
-        // Serial.print(rearPID.kd * ((rearPID.error - rearPID.lastError) / 0.5));
-        // Serial.print(", Total Output: ");
-        // Serial.println(rearPID.output);
+    unsigned long now = millis();
 
-        // Serial.println();
+    if (now - lastIMUPublish >= IMU_INTERVAL) {
+        lastIMUPublish = now;
+        Serial.print("{\"imu\":[");
+        Serial.print(DriveBase::imu.getRoll(), 4); Serial.print(",");
+        Serial.print(DriveBase::imu.getPitch(), 4); Serial.print(",");
+        Serial.print(DriveBase::imu.getHeading(), 4);
+        Serial.println("]}");
+    }
 
-        // Serial.print("Left Motor Speed: ");
-        // Serial.println(DriveBase::motorLeft.getCurrentSpeed()/4096);
-        // Serial.print("Right Motor Speed: ");
-        // Serial.println(DriveBase::motorRight.getCurrentSpeed()/4096);
-        // Serial.print("Front Pivot Motor Speed: ");
-        // Serial.println(DriveBase::motorPivotFront.getCurrentSpeed()/4096);
-        // Serial.print("Rear Pivot Motor Speed: ");
-        // Serial.println(DriveBase::motorPivotRear.getCurrentSpeed()/4096);
+    if (now - lastEncoderPublish >= ENCODER_INTERVAL) {
+        lastEncoderPublish = now;
+        Serial.print("{\"enc\":[");
+        Serial.print(DriveBase::motorLeft.getEncoder()->getCount()); Serial.print(",");
+        Serial.print(DriveBase::motorRight.getEncoder()->getCount()); Serial.print(",");
+        Serial.print(DriveBase::encoderPivotLeft.getRotations(), 4); Serial.print(",");
+        Serial.print(DriveBase::encoderPivotRight.getRotations(), 4);
+        Serial.println("]}");
+    }
 
-        // Serial.print(DriveBase::imu.getHeading());
-        // Serial.println(" deg");
-
-        lastPrintTime = currentTime;
-
-            Serial.print("Distance:\t");
-            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_RIGHT_ID));
-            Serial.print(" cm");
-            Serial.print("  \t|\t");
-            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_LEFT_ID));
-            Serial.print(" cm");
-            Serial.print("  \t|\t");
-            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID));
-            Serial.println(" cm");
-            // Serial.print("Left Sensor Distance: ");
-            // Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_LEFT_ID));
-            // Serial.println(" cm");
-
-            // Serial.print("Front Sensor Distance: \t");
-            // Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID));
-            // Serial.println(" cm");
+    if (now - lastTOFPublish >= TOF_INTERVAL) {
+        lastTOFPublish = now;
+        Serial.print("{\"tof\":[");
+        Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_RIGHT_ID)); Serial.print(",");
+        Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_LEFT_ID)); Serial.print(",");
+        Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID));
+        Serial.println("]}");
     }
 }
