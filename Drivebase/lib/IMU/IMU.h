@@ -38,6 +38,9 @@ private:
 
     bool initialized = false;
 
+    // Heading offset
+    float headingOffset = 0.0f;
+
     // Madgwick filter functions
     void madgwickUpdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
     void madgwickUpdateIMU(float gx, float gy, float gz, float ax, float ay, float az);
@@ -57,6 +60,10 @@ public:
     void setAccelScales(float x, float y, float z);
     void setMagScales(float x, float y, float z);
     void setMadgwickBeta(float beta);
+
+    // General calibration method
+    void calibrate();
+    void calibrateGyro();
 
     // Get orientation in degrees
     float getRoll() const;
