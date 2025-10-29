@@ -16,6 +16,7 @@ namespace CommandInterpreter {
     void begin();
     bool registerCommand(const command& cmd);
     void periodic();
+    bool invoke(const char* name, const std::string& args);
 };
 
 #endif

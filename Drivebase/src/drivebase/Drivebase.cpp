@@ -4,6 +4,8 @@
 #include <Motors.h>
 #include <Encoders.h>
 
+#include <tof_cameras.h>
+
     
 namespace DriveBase {
     float targetxvel = 0.0f;
@@ -135,6 +137,10 @@ namespace DriveBase {
             float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
             DriveBase::motorPivotLeft.setTargetPosition(angle);
             DriveBase::motorPivotRight.setTargetPosition(angle);
+
+            DriveBase::motorPivotRight.enableRawPositionControl(true);
+            DriveBase::motorPivotLeft.enableRawPositionControl(true);
+
             return;
         }
     }

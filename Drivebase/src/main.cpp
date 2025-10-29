@@ -290,21 +290,48 @@ void setup()
 
     CommandInterpreter::registerCommand({"moveForwards", [](const std::string *args)
                                          {
-                                             DriveBase::motorPivotRight.enableRawPositionControl(false);
-                                             DriveBase::motorPivotLeft.enableRawPositionControl(false);
-                                             DriveBase::motorPivotRight.coast();
-                                             DriveBase::motorPivotLeft.coast();
-                                             Serial.println("Position control disabled for pivot motors.");
+                                            DriveBase::driveMode = DriveBase::DriveMode::STRAIGHT_LINE_CONTROL;
+                                             Serial.println("Drive mode set to STRAIGHT_LINE_CONTROL.");
                                          }, "Usage: moveForwards \n Moves the robot forwards."});
 }
 
 static unsigned long lastPrintTime = 0;
 
+    static int state = 0;
 void loop()
 {
     // Update motor control (this runs the PID for ALL motors)
     CommandInterpreter::periodic();
     DriveBase::update(); // This calls updateControl() for all motors
+
+
+    switch (state) {
+        case 0:
+            CommandInterpreter::invoke("moveForwards", {});
+
+            if (DriveBase::imu.getGyroY() >= 10 || DriveBase::imu.getGyroX() >= 10)
+                state ++;
+            
+            break;
+        case 1:
+            Serial.println("go down ramp");
+            if (DriveBase::imu.getGyroY() <= 5 && DriveBase::imu.getGyroX() <= 5)
+                state ++;
+            break;
+        case 2:
+            Serial.println("State 2: Executing step 2...");
+            if(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID) < 30)
+            state = 3;
+            break;
+        case 3:
+            Serial.println("State 3: Executing step 3...");
+            // Step 3 logic
+            state = 0; // Loop back to start
+            break;
+        default:
+            state = 0;
+            break;
+    }
 
     unsigned long currentTime = millis();
     // Print status every 500ms

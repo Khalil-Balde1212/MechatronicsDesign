@@ -5,6 +5,17 @@
 
 namespace CommandInterpreter {
     std::vector<command> commands; // Define the commands vector
+    bool invoke(const char* name, const std::string& args) {
+        for (const auto& cmd : commands) {
+            if (strcmp(cmd.name, name) == 0) {
+                cmd.function(&args);
+                return true;
+            }
+        }
+        ::Serial.print("Unknown command: ");
+        ::Serial.println(name);
+        return false;
+    }
     
     void begin() {
         commands.clear(); // Use clear() instead of begin() for vector
