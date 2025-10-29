@@ -18,6 +18,11 @@ void setup()
     CommandInterpreter::begin();
     DriveBase::begin();
 
+    // Calibrate IMU gyro at startup (robot must be stationary)
+    Serial.println("Calibrating IMU gyro, please keep robot still...");
+    DriveBase::imu.calibrateGyro();
+    Serial.println("IMU gyro calibration complete.");
+
     // Disable the built-in heading PID to use motor's position control
     DriveBase::enableHeadingPID(false);
 
@@ -295,7 +300,7 @@ void loop()
     // Both motors start at high speed (4096)
     // As the robot veers away from targetHeading, reduce speed of one side to correct
     float headingError = DriveBase::imu.getHeading() - targetHeading;
-    float correction = headingError / 180.0f * 4095 * 15; // scale correction
+    float correction = headingError / 180.0f * 4095 * 10; // scale correction
 
     DriveBase::motorLeft.setSpeed(4096 + correction);   // Reduce left if error positive
     DriveBase::motorRight.setSpeed(4096 - correction);  // Reduce right if error negative
@@ -316,11 +321,11 @@ void loop()
         DriveBase::motorPivotLeft.coast();
     }
     
+        Serial.println(DriveBase::imu.getHeading());
     unsigned long currentTime = millis();
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)
     {
-        Serial.println(DriveBase::imu.getHeading());
         // Serial.print("Left Wheel Encoder: \t");
         // DriveBase::motorLeft.getEncoder()->printStatus();
         // Serial.print("Right Wheel Encoder:\t");

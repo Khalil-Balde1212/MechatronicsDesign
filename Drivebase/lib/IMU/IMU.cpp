@@ -62,13 +62,15 @@ void IMUController::update() {
     // Run Madgwick filter
     if (accelAvailable && gyroAvailable) {
         if (magAvailable) {
-            // 9DOF Madgwick filter (with magnetometer)
+            // Serial.println("Madgwick filter: Magnetometer USED");
             madgwickUpdate(gx, gy, gz, ax, ay, az, mx, my, mz);
         } else {
-            // 6DOF Madgwick filter (IMU only)
+            // Serial.println("Madgwick filter: Magnetometer NOT used");
             madgwickUpdateIMU(gx, gy, gz, ax, ay, az);
         }
     }
+    // Artificially increment heading offset by 0.1 degrees every update
+    headingOffset += 0.005f;
 }
 
 // Fast inverse square root approximation
@@ -287,7 +289,7 @@ float IMUController::getYaw() const {
 
 float IMUController::getHeading() const {
     // Heading is the same as yaw for navigation purposes
-    return getYaw();
+    return getYaw() + headingOffset;
 }
 
 // Get Euler angles in radians
@@ -354,4 +356,39 @@ void IMUController::reset() {
     q2 = 0.0f;
     q3 = 0.0f;
     lastUpdateTime = millis();
+}
+
+void IMUController::calibrate() {
+    Serial.println("Starting IMU calibration. Please keep the robot stationary.");
+    calibrateGyro();
+    // Optionally add accelerometer and magnetometer calibration here
+    // calibrateAccel();
+    // calibrateMag();
+    Serial.println("IMU calibration complete.");
+}
+
+void IMUController::calibrateGyro() {
+    const int numSamples = 500;
+    float sumX = 0, sumY = 0, sumZ = 0;
+    int samples = 0;
+    Serial.println("Calibrating gyro... Keep robot stationary.");
+    for (int i = 0; i < numSamples; ++i) {
+        while (!IMU.gyroscopeAvailable()) {}
+        float x, y, z;
+        IMU.readGyroscope(x, y, z);
+        sumX += x;
+        sumY += y;
+        sumZ += z;
+        samples++;
+        delay(2);
+    }
+    gyro_offset_x = sumX / samples;
+    gyro_offset_y = sumY / samples;
+    gyro_offset_z = sumZ / samples;
+    Serial.print("Gyro offsets set: x=");
+    Serial.print(gyro_offset_x);
+    Serial.print(", y=");
+    Serial.print(gyro_offset_y);
+    Serial.print(", z=");
+    Serial.println(gyro_offset_z);
 }
