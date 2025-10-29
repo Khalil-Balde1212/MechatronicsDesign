@@ -330,7 +330,7 @@ void loop()
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)
     {
-        Serial.println(DriveBase::imu.getHeading());
+        // Serial.println(DriveBase::imu.getHeading());
         // Serial.print("Left Wheel Encoder: \t");
         // DriveBase::motorLeft.getEncoder()->printStatus();
         // Serial.print("Right Wheel Encoder:\t");
@@ -384,55 +384,21 @@ void loop()
 
         lastPrintTime = currentTime;
 
-        // Print encoder readings
-        Serial.println("\n=== TOF Debug ===");
-        Serial.println("Sensor Measurements (cm):");
-
-        // Print TOF sensor reading with error checking
-        Serial.println("\nTOF Sensor Reading:");
-        float distance = tofSensors.getFilteredDistanceCM(0);
-        if (tofSensors.sensorTimeout(0))
-        {
-            Serial.println("Sensor 0: TIMEOUT");
-        }
-        else if (distance < 0)
-        {
-            Serial.println("Sensor 0: ERROR");
-        }
-        else
-        {
-            Serial.print("Sensor 0 Distance: ");
-            Serial.print(distance);
+            Serial.print("Distance:\t");
+            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_RIGHT_ID));
+            Serial.print(" cm");
+            Serial.print("  \t|\t");
+            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_LEFT_ID));
+            Serial.print(" cm");
+            Serial.print("  \t|\t");
+            Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID));
             Serial.println(" cm");
-        }
+            // Serial.print("Left Sensor Distance: ");
+            // Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_LEFT_ID));
+            // Serial.println(" cm");
 
-        
-        Serial.println("===================\n");
-    }
-
-    // Print TOF sensor reading with error checking
-
-    Serial.println("\nTOF Sensor Reading:");
-
-    float distance = tofSensors.getFilteredDistanceCM(0);
-
-    if (tofSensors.sensorTimeout(0))
-    {
-
-        Serial.println("Sensor 0: TIMEOUT");
-    }
-    else if (distance < 0)
-    {
-
-        Serial.println("Sensor 0: ERROR");
-    }
-    else
-    {
-
-        Serial.print("Sensor 0 Distance: ");
-
-        Serial.print(distance);
-
-        Serial.println(" cm");
+            // Serial.print("Front Sensor Distance: \t");
+            // Serial.print(tofSensors.getFilteredDistanceCM(RobotMap::TOF_FRONT_ID));
+            // Serial.println(" cm");
     }
 }
