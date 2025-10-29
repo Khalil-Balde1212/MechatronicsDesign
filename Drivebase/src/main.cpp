@@ -294,14 +294,14 @@ void setup()
 
         CommandInterpreter::registerCommand({"lowerClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::ARM_SERVO_PIN, 0, 300);  // Example value to lower arm
+            Motor::pwmDriver->setPWM(RobotMap::ARM1_SERVO_PIN, 0, 300);  // Example value to lower arm
         },
         "Usage: lowerClaw \n Lowers the arm mechanism."
         });
 
         CommandInterpreter::registerCommand({"raiseClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::ARM_SERVO_PIN, 0, 100);  // Example value to raise arm
+            Motor::pwmDriver->setPWM(RobotMap::ARM1_SERVO_PIN, 0, 100);  // Example value to raise arm
         },
         "Usage: raiseClaw \n Raises the arm mechanism."
         });
