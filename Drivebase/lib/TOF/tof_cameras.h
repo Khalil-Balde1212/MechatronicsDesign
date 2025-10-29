@@ -7,7 +7,7 @@
 
 namespace TOF {
     // Number of sensors
-    const int SENSOR_COUNT = 4;
+    const int SENSOR_COUNT = 3;
 
     class MedianFilter {
     private:
