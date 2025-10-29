@@ -63,7 +63,7 @@ namespace RobotMap
 
 
 
-    const int ARM1_SERVO_PIN = 12;
+    const int ARM1_SERVO_PIN = 11;
     const int ARM2_SERVO_PIN = 13;
     const int CLAW_SERVO_PIN = 14;
 }
