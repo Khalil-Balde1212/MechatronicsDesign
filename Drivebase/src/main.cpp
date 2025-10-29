@@ -10,6 +10,11 @@
 
 #include "drivebase/Drivebase.h"
 
+void setServoAngle(int servo, double angle){
+    int pwmValue = map(angle, 0, 180, 150, 600);
+    Motor::pwmDriver->setPWM(servo, 0, pwmValue);
+}
+
 void setup()
 {
     Serial.begin(9600);
@@ -278,30 +283,34 @@ void setup()
         });
 
 
+
+
+
         CommandInterpreter::registerCommand({"openClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::CLAW_SERVO_PIN, 0, 400);  // Example value to open claw
+            setServoAngle(RobotMap::CLAW_SERVO_PIN, 90);  // Example angle to open claw
         },
         "Usage: openClaw \n Opens the claw mechanism."
         });
 
         CommandInterpreter::registerCommand({"closeClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::CLAW_SERVO_PIN, 0, 150);  // Example value to close claw
+            setServoAngle(RobotMap::CLAW_SERVO_PIN, 0);  // Example angle to close claw
         },
         "Usage: closeClaw \n Closes the claw mechanism."
         });
 
         CommandInterpreter::registerCommand({"lowerClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::ARM1_SERVO_PIN, 0, 300);  // Example value to lower arm
+            setServoAngle(RobotMap::ARM1_SERVO_PIN, 0);  // Example value to lower arm
+            setServoAngle(RobotMap::ARM2_SERVO_PIN, 0);  // Open claw when lowering
         },
         "Usage: lowerClaw \n Lowers the arm mechanism."
         });
 
         CommandInterpreter::registerCommand({"raiseClaw", [](const std::string* args)
         {
-            Motor::pwmDriver->setPWM(RobotMap::ARM1_SERVO_PIN, 0, 100);  // Example value to raise arm
+            setServoAngle(RobotMap::ARM1_SERVO_PIN, 180);  // Example value to raise arm
         },
         "Usage: raiseClaw \n Raises the arm mechanism."
         });
