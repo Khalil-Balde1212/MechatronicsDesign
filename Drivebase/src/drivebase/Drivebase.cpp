@@ -33,6 +33,15 @@ namespace DriveBase {
 
     int predictiveHeading = 0;
 
+    // Trajectory driving variables
+    float targetVx = 0.0f;
+    float targetVy = 0.0f;
+    float targetYawRate = 0.0f;
+
+    // Heading maintenance state
+    static double lastMaintainedHeading = 0.0;
+    static bool headingInitialized = false;
+
     void begin() {
         // Initialize all encoders
         encoderLeft.begin();
@@ -95,6 +104,63 @@ namespace DriveBase {
             // Apply correction to tank drive
             motorLeft.setSpeed(targetLeftSpeed + correction);
             motorRight.setSpeed(targetRightSpeed - correction);
+            return; 
+        }
+
+
+
+        if (driveMode == TRAJECTORY_CONTROL) {
+            // Enable speed control for tank drive motors
+            motorLeft.enableSpeedControl(true);
+            motorRight.enableSpeedControl(true);
+            
+            float pivotAngle = atan2(targetVy, targetVx) * 180.0 / PI; // in degrees
+
+            motorPivotLeft.setTargetPosition(pivotAngle);
+            motorPivotRight.setTargetPosition(pivotAngle);
+
+            float magnitude = sqrt(targetVx * targetVx + targetVy * targetVy)/(RobotMap::WHEEL_RADIUS_MM*2*PI/1000.0); // pythagoras my boi
+
+            // Calculate yaw correction from multiple sources
+            double yawCorrection = 0.0;
+            
+            // Choose control mode based on targetYawRate
+            if (abs(targetYawRate) < 0.01) { 
+                // Maintain current heading when omega ≈ 0
+                if (!headingInitialized) {
+                    lastMaintainedHeading = imu.getYaw();
+                    setTargetHeading(lastMaintainedHeading);
+                    enableHeadingPID(true);
+                    headingInitialized = true;
+                }
+                yawCorrection = calculateHeadingCorrection();
+            } else { 
+                // Active yaw rate control when omega ≠ 0
+                enableHeadingPID(false);
+                headingInitialized = false;
+                
+                // Use yaw rate PID for turning
+                static double yawKp = 0.4, yawKi = 0.0, yawKd = 0.08;
+                static double yawError = 0.0, yawLastError = 0.0, yawIntegral = 0.0;
+                static unsigned long yawLastTime = 0;
+
+                if (yawLastTime == 0) yawLastTime = millis();
+                double currentYawRate = imu.getAngularVelocityZRad();
+                yawError = targetYawRate - currentYawRate;
+                unsigned long now = millis();
+                double dt = (now - yawLastTime) / 1000.0;
+                yawIntegral += yawError * dt;
+                double yawDerivative = (yawError - yawLastError) / dt;
+                yawCorrection = yawKp * yawError + yawKi * yawIntegral + yawKd * yawDerivative;
+                yawLastError = yawError;
+                yawLastTime = now;
+            }
+
+            // Apply yaw correction to tank drive
+            motorLeft.setTargetSpeed(magnitude + yawCorrection);
+            motorRight.setTargetSpeed(magnitude - yawCorrection);
+
+            return;
         }
     }
 
@@ -109,12 +175,36 @@ namespace DriveBase {
 
 
     void configurePIDs() {
+        // Configure speed PID gains for tank drive motors
+        motorLeft.setSpeedPID(2.0, 0.1, 0.0);      // Speed control for left motor
+        motorLeft.setSpeedTolerance(0.1);            // 0.1 RPS tolerance
+        
+        motorRight.setSpeedPID(2.0, 0.1, 0.0);     // Speed control for right motor  
+        motorRight.setSpeedTolerance(0.1);           // 0.1 RPS tolerance
+
         // Configure position PID gains for pivot motors - conservative tuning to reduce oscillation
         motorPivotRight.setPositionPID(3.0, 0.0, 0.0);  // Conservative gains for right motor (higher resistance)
         motorPivotRight.setPositionTolerance(100);         // Relaxed tolerance for reliable stopping
 
         motorPivotLeft.setPositionPID(2.0, 0.0, 0.0);  // Conservative gains for left motor (more power)
         motorPivotLeft.setPositionTolerance(100);          // Relaxed tolerance for reliable stopping
+    }
+
+    void calculateTrajectory(float vx, float vy, float yawRate) {
+        targetVx = vx;
+        targetVy = vy;
+        targetYawRate = yawRate;
+        driveMode = TRAJECTORY_CONTROL;
+    }
+
+    void setTargetYawRate(float yawRate) {
+        targetYawRate = yawRate;
+    }
+
+    void resetHeadingMaintenance() {
+        // Reset heading maintenance state for next trajectory
+        headingInitialized = false;
+        enableHeadingPID(false);
     }
 
 }

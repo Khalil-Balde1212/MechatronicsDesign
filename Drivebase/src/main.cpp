@@ -277,34 +277,44 @@ void setup()
         "Usage: disablePositionControl \n Disables position control and stops pivot motors."
         });
 
+
+        CommandInterpreter::registerCommand({"TG", [](const std::string* args)
+        {
+            if (args->size() == 6)
+            {
+                bool allNumeric = true;
+                for (int i = 0; i < 6; ++i) {
+                    const std::string& arg = args[i];
+                    if (arg.empty() || (arg.find_first_not_of("0123456789.-") != std::string::npos)) {
+                        allNumeric = false;
+                        break;
+                    }
+                }
+                if (!allNumeric) {
+                    Serial.println("Error: Invalid argument for TG command. All arguments must be numeric.");
+                    return;
+                }
+
+                DriveBase::targetVx = std::stof(args[0]);
+                DriveBase::targetVy = std::stof(args[1]);
+                DriveBase::targetYawRate = std::stof(args[6]);
+                DriveBase::driveMode = DriveBase::DriveMode::TRAJECTORY_CONTROL;
+            }
+            else
+            {
+                Serial.println("Error: TG command requires 6 arguments: Vx, Vy, Vz, Omega x, Omega y, Omega z");
+            }
+        }, "Usage: TG <Vx> <Vy> <Vz> <Omega_x> <Omega_y> <Omega_z>\n Sets target trajectory velocities."
+        });
 }
 
-static unsigned long lastPrintTime = 0;
+unsigned long lastPrintTime = 0;
 
 void loop()
 {
     // Update motor control (this runs the PID for ALL motors)
     CommandInterpreter::periodic();
     DriveBase::update();  // This calls updateControl() for all motors
-
-    float targetHeading = 0.0f;
-    float targetyvel = 10.0f;
-    float targetxvel = 0.0f;
-
-
-    // Both motors start at high speed (4096)
-    // As the robot veers away from targetHeading, reduce speed of one side to correct
-    float headingError = DriveBase::imu.getHeading() - targetHeading;
-    float correction = headingError / 180.0f * 4095 * 15; // scale correction
-
-    DriveBase::motorLeft.setSpeed(4096 + correction);   // Reduce left if error positive
-    DriveBase::motorRight.setSpeed(4096 - correction);  // Reduce right if error negative
-
-    // Calculate angle between target x and y velocity
-    float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
-    DriveBase::motorPivotLeft.setTargetPosition(angle);
-    DriveBase::motorPivotRight.setTargetPosition(angle);
-
     
     // Safety check: Disable position control when motors reach target to prevent runaway
     if (DriveBase::motorPivotRight.isPositionAtTarget()) {

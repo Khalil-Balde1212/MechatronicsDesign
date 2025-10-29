@@ -27,9 +27,16 @@ namespace DriveBase {
     extern double targetRightSpeed;
     extern double pivotAngle;
 
+
+        // trajetory driving variables
+    extern float targetVx;
+    extern float targetVy;
+    extern float targetYawRate;
+
     enum DriveMode {
         RAW_CONTROL, 
-        HEADING_CONTROL
+        HEADING_CONTROL,
+        TRAJECTORY_CONTROL
     };
 
     static DriveMode driveMode;
@@ -49,6 +56,10 @@ namespace DriveBase {
     void resetEncoders();
 
     void calculateTrajectory(float vx, float vy, float yawRate);
+
+    // Trajectory control functions
+    void setTargetYawRate(float yawRate);
+    void resetHeadingMaintenance();
 
 
     // raw controls

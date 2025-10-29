@@ -313,6 +313,14 @@ float IMUController::getHeadingRad() const {
     return getYawRad();
 }
 
+float IMUController::getAngularVelocityMagnitude() const {
+    return sqrt(gx * gx + gy * gy + gz * gz);
+}
+
+float IMUController::getAngularVelocityMagnitudeDeg() const {
+    return getAngularVelocityMagnitude() * RAD_TO_DEG;
+}
+
 // Calibration setters
 void IMUController::setGyroOffsets(float x, float y, float z) {
     gyro_offset_x = x;

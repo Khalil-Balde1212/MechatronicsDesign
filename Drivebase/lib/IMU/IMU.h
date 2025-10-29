@@ -81,6 +81,24 @@ public:
     float getMagY() const { return my; }
     float getMagZ() const { return mz; }
 
+    // Get angular velocity (radians per second)
+    float getAngularVelocityX() const { return gx; }
+    float getAngularVelocityY() const { return gy; }
+    float getAngularVelocityZ() const { return gz; }
+    float getAngularVelocityXRad() const { return gx; }
+    float getAngularVelocityYRad() const { return gy; }
+    float getAngularVelocityZRad() const { return gz; }
+
+    // Get angular velocity (degrees per second)
+    float getAngularVelocityXDeg() const { return gx * RAD_TO_DEG; }
+    float getAngularVelocityYDeg() const { return gy * RAD_TO_DEG; }
+    float getAngularVelocityZDeg() const { return gz * RAD_TO_DEG; }
+
+    // Get angular velocity magnitude
+    float getAngularVelocityMagnitude() const;
+    float getAngularVelocityMagnitudeRad() const { return getAngularVelocityMagnitude(); }
+    float getAngularVelocityMagnitudeDeg() const;
+
     // Get quaternion components
     float getQ0() const { return q0; }
     float getQ1() const { return q1; }
