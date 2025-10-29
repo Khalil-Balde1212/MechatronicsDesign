@@ -9,6 +9,7 @@
 #include <Motors.h>
 
 #include "drivebase/Drivebase.h"
+#include <sstream>
 
 void setup()
 {
@@ -280,11 +281,18 @@ void setup()
 
         CommandInterpreter::registerCommand({"TG", [](const std::string* args)
         {
-            if (args->size() == 6)
+            // Split the argument string by spaces
+            std::vector<std::string> argList;
+            std::istringstream iss(*args);
+            std::string token;
+            while (iss >> token) {
+                argList.push_back(token);
+            }
+            if (argList.size() == 6)
             {
                 bool allNumeric = true;
                 for (int i = 0; i < 6; ++i) {
-                    const std::string& arg = args[i];
+                    const std::string& arg = argList[i];
                     if (arg.empty() || (arg.find_first_not_of("0123456789.-") != std::string::npos)) {
                         allNumeric = false;
                         break;
@@ -294,10 +302,16 @@ void setup()
                     Serial.println("Error: Invalid argument for TG command. All arguments must be numeric.");
                     return;
                 }
-
-                DriveBase::targetVx = std::stof(args[0]);
-                DriveBase::targetVy = std::stof(args[1]);
-                DriveBase::targetYawRate = std::stof(args[6]);
+                Serial.println("Setting target trajectory velocities:");
+                Serial.print("Vx: "); Serial.println(argList[0].c_str());
+                Serial.print("Vy: "); Serial.println(argList[1].c_str());
+                Serial.print("Vz: "); Serial.println(argList[2].c_str());
+                Serial.print("Omega_x: "); Serial.println(argList[3].c_str());
+                Serial.print("Omega_y: "); Serial.println(argList[4].c_str());
+                Serial.print("Omega_z: "); Serial.println(argList[5].c_str());
+                DriveBase::targetVx = std::stof(argList[0]);
+                DriveBase::targetVy = std::stof(argList[1]);
+                DriveBase::targetYawRate = std::stof(argList[5]);
                 DriveBase::driveMode = DriveBase::DriveMode::TRAJECTORY_CONTROL;
             }
             else
@@ -330,15 +344,17 @@ void loop()
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)
     {
-        Serial.println(DriveBase::imu.getHeading());
-        // Serial.print("Left Wheel Encoder: \t");
-        // DriveBase::motorLeft.getEncoder()->printStatus();
-        // Serial.print("Right Wheel Encoder:\t");
-        // DriveBase::motorRight.getEncoder()->printStatus();
-        // Serial.print("Right Pivot Encoder:\t");
-        // DriveBase::motorPivotRight.getEncoder()->printStatus(); 
-        // Serial.print("Left Pivot Encoder:\t");
-        // DriveBase::motorPivotLeft.getEncoder()->printStatus();
+        Serial.println();
+        // Serial.println(DriveBase::imu.getHeading());
+        Serial.print("Left Wheel Encoder: \t");
+        DriveBase::motorLeft.getEncoder()->printStatus();
+        Serial.print("Right Wheel Encoder:\t");
+        DriveBase::motorRight.getEncoder()->printStatus();
+        Serial.print("Right Pivot Encoder:\t");
+        DriveBase::motorPivotRight.getEncoder()->printStatus(); 
+        Serial.print("Left Pivot Encoder:\t");
+        DriveBase::motorPivotLeft.getEncoder()->printStatus();
+
         
         // // Add PID status for pivot motors
         // Serial.println("=== PIVOT MOTOR PID STATUS ===");

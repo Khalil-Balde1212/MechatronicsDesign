@@ -35,7 +35,7 @@ namespace RobotMap
 
     const int MOTOR_PIVOT_LEFT_A = 15; 
     const int MOTOR_PIVOT_LEFT_B = 14;  
-    const boolean MOTOR_PIVOT_LEFT_INVERTED = true;
+    const boolean MOTOR_PIVOT_LEFT_INVERTED = false;
 
     // Pivot Right Motors
     const int ENC_PIVOT_RIGHT_A = 3;

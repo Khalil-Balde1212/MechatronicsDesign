@@ -74,6 +74,12 @@ namespace DriveBase {
         motorPivotRight.coast();
         motorPivotLeft.coast();
 
+        motorLeft.setInverted(RobotMap::MOTOR_LEFT_INVERTED);
+        motorRight.setInverted(RobotMap::MOTOR_RIGHT_INVERTED);
+        motorPivotRight.setInverted(RobotMap::MOTOR_PIVOT_RIGHT_INVERTED);
+        motorPivotLeft.setInverted(RobotMap::MOTOR_PIVOT_LEFT_INVERTED);
+        
+
 
         // Initialize PWM driver (only needs to be done once for all motors)
         motorLeft.initializePWM();
@@ -157,8 +163,8 @@ namespace DriveBase {
             }
 
             // Apply yaw correction to tank drive
-            motorLeft.setTargetSpeed(magnitude + yawCorrection);
-            motorRight.setTargetSpeed(magnitude - yawCorrection);
+            motorLeft.setTargetSpeed(magnitude*500 + yawCorrection*500);
+            motorRight.setTargetSpeed(magnitude*500 - yawCorrection*500);
 
             return;
         }
@@ -183,10 +189,10 @@ namespace DriveBase {
         motorRight.setSpeedTolerance(0.1);           // 0.1 RPS tolerance
 
         // Configure position PID gains for pivot motors - conservative tuning to reduce oscillation
-        motorPivotRight.setPositionPID(3.0, 0.0, 0.0);  // Conservative gains for right motor (higher resistance)
+        motorPivotRight.setPositionPID(10.0, 0.0, 0.0);  // Conservative gains for right motor (higher resistance)
         motorPivotRight.setPositionTolerance(100);         // Relaxed tolerance for reliable stopping
 
-        motorPivotLeft.setPositionPID(2.0, 0.0, 0.0);  // Conservative gains for left motor (more power)
+        motorPivotLeft.setPositionPID(10.0, 0.0, 0.0);  // Conservative gains for left motor (more power)
         motorPivotLeft.setPositionTolerance(100);          // Relaxed tolerance for reliable stopping
     }
 
