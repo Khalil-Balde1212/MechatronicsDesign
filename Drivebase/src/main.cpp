@@ -297,35 +297,6 @@ void loop()
     CommandInterpreter::periodic();
     DriveBase::update(); // This calls updateControl() for all motors
 
-    float targetHeading = 0.0f;
-    float targetyvel = 10.0f;
-    float targetxvel = 0.0f;
-
-    // Both motors start at high speed (4096)
-    // As the robot veers away from targetHeading, reduce speed of one side to correct
-    float headingError = DriveBase::imu.getHeading() - targetHeading;
-    float correction = headingError / 180.0f * 4095 * 15; // scale correction
-
-    DriveBase::motorLeft.setSpeed(4096 + correction);  // Reduce left if error positive
-    DriveBase::motorRight.setSpeed(4096 - correction); // Reduce right if error negative
-
-    // Calculate angle between target x and y velocity
-    float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
-    DriveBase::motorPivotLeft.setTargetPosition(angle);
-    DriveBase::motorPivotRight.setTargetPosition(angle);
-
-    // Safety check: Disable position control when motors reach target to prevent runaway
-    if (DriveBase::motorPivotRight.isPositionAtTarget())
-    {
-        DriveBase::motorPivotRight.enableRawPositionControl(false);
-        DriveBase::motorPivotRight.coast();
-    }
-    if (DriveBase::motorPivotLeft.isPositionAtTarget())
-    {
-        DriveBase::motorPivotLeft.enableRawPositionControl(false);
-        DriveBase::motorPivotLeft.coast();
-    }
-
     unsigned long currentTime = millis();
     // Print status every 500ms
     if (currentTime - lastPrintTime >= 500)

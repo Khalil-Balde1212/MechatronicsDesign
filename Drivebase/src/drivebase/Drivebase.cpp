@@ -4,7 +4,11 @@
 #include <Motors.h>
 #include <Encoders.h>
 
+    
 namespace DriveBase {
+    float targetxvel = 0.0f;
+    float targetyvel = 0.0f;
+    float targetHeading = 0.0f;
     // Tank Drive Motors
     Encoder encoderLeft(RobotMap::ENC_LEFT_A, RobotMap::ENC_LEFT_B);
     Encoder encoderRight(RobotMap::ENC_RIGHT_A, RobotMap::ENC_RIGHT_B);
@@ -89,12 +93,49 @@ namespace DriveBase {
         motorPivotLeft.updateControl();
         imu.update();
 
-        // Apply heading correction if enabled
-        if (headingPIDEnabled) {
-            double correction = calculateHeadingCorrection();
-            // Apply correction to tank drive
-            motorLeft.setSpeed(targetLeftSpeed + correction);
-            motorRight.setSpeed(targetRightSpeed - correction);
+        if(driveMode == HEADING_CONTROL) {
+            // Turn on the spot using heading PID
+            double currentHeading = imu.getHeading();
+            headingError = headingSetpoint - currentHeading;
+
+            // Normalize error to [-180, 180]
+            while (headingError > 180.0) headingError -= 360.0;
+            while (headingError < -180.0) headingError += 360.0;
+
+            unsigned long now = millis();
+            double dt = (now - headingLastTime) / 1000.0; // seconds
+
+            headingIntegral += headingError * dt;
+            double headingDerivative = (headingError - headingLastError) / dt;
+
+            double output = headingKp * headingError + headingKi * headingIntegral + headingKd * headingDerivative;
+
+            // Clamp output to motor speed limits
+            output = constrain(output, -4095, 4095);
+
+            // Turn on the spot: left and right motors in opposite directions
+            motorLeft.setSpeed(output);
+            motorRight.setSpeed(-output);
+
+            headingLastError = headingError;
+            headingLastTime = now;
+            return;
+        }
+
+        if (driveMode == STRAIGHT_LINE_CONTROL) {
+            // Both motors start at high speed (4096)
+            // As the robot veers away from targetHeading, reduce speed of one side to correct
+            float headingError = DriveBase::imu.getHeading() - targetHeading;
+            float correction = headingError / 180.0f * 4095 * 15; // scale correction
+
+            DriveBase::motorLeft.setSpeed(4096 + correction);  // Reduce left if error positive
+            DriveBase::motorRight.setSpeed(4096 - correction); // Reduce right if error negative
+
+            // Calculate angle between target x and y velocity
+            float angle = atan2(targetyvel, targetxvel) * 180.0f / PI;
+            DriveBase::motorPivotLeft.setTargetPosition(angle);
+            DriveBase::motorPivotRight.setTargetPosition(angle);
+            return;
         }
     }
 

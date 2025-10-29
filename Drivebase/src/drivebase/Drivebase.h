@@ -27,9 +27,14 @@ namespace DriveBase {
     extern double targetRightSpeed;
     extern double pivotAngle;
 
+    extern float targetHeading;
+    extern float targetyvel;
+    extern float targetxvel;
+
     enum DriveMode {
         RAW_CONTROL, 
-        HEADING_CONTROL
+        HEADING_CONTROL,
+        STRAIGHT_LINE_CONTROL
     };
 
     static DriveMode driveMode;
